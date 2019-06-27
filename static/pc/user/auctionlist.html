@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>个人中心页面</title>
+        <link rel="stylesheet" href="../assets/bootstrap/dist/css/bootstrap.css">
+        <link rel="stylesheet" href="../css/balancelist.css">
+    </head>
+    <body>
+        <div class="layout">
+            <div class="header">
+                <nav class="navbar navbar-default">
+                    <div class="container-fluid">
+                        <!-- Brand and toggle get grouped for better mobile display -->
+                        <div class="navbar-header">
+                            <button
+                                type="button"
+                                class="navbar-toggle collapsed"
+                                data-toggle="collapse"
+                                data-target="#bs-example-navbar-collapse-1"
+                                aria-expanded="false">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                            <a class="navbar-brand" href="#">copyright</a>
+                        </div>
+                        <!-- Collect the nav links, forms, and other content for toggling -->
+                        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                            <ul class="nav navbar-nav">
+                                <li >
+                                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">认证原创</a>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a href="./articleauthor.html">认证文章</a>
+                                        </li>
+                                        <li>
+                                            <a href="./imageAuthor.html">认证图片</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <a href="#">我的资产</a>
+                                </li>
+                                <li class="active">
+                                    <a href="auctionlist.html">拍卖所</a>
+                                </li>
+                                <li>
+                                    <a href="#">转载监测</a>
+                                </li>
+                                <li>
+                                    <a href="#">证据管理</a>
+                                </li>
+                            </ul>
+                            <ul class="nav navbar-nav navbar-right">
+                                <li>
+                                    <a href="#" class="glyphicon glyphicon-asterisk"></a>
+                                </li>
+                                <li>
+                                    <a href="#" class="glyphicon glyphicon-search"></a>
+                                </li>
+                                <li>
+                                    <a href="#" class="glyphicon ">DNA</a>
+                                </li>
+                                <li>
+                                    <a href="#" class="glyphicon glyphicon-user"></a>
+                                </li>
+                                <li>
+                                    <a href="#">我的</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+            <div class="container">
+                <ul class="containerlist"></ul>
+            </div>
+        </div>
+        <script src="../assets/jquery/jquery.js"></script>
+        <script src="../assets/bootstrap/dist/js/bootstrap.js"></script>
+        <script src="../assets/template-native/template-native.js"></script>
+        <script type="text/template" id="templateId">
+            <% for(var i=0;i<data.data.length;i++){ %>
+            <li>
+                <div>
+                    <!-- 获取response data, 添加分页 -->
+                    <img data-tokenid="<%= data.data[i].token_id %>" src="/content/<%=data.data[i].title%>""
+                        data-pixhash="<%= data.data[i].content_hash %>">
+                    <div>
+                        <span><%= data.data[i].title %></span>
+                        <input type="text" placeholder="<%= data.data[i].price %>"><a href="javascript:;" class='bid_btn'
+                            data-tokenid="<%= data.data[i].token_id %>">竞拍</a>
+                    </div>
+                </div>
+            </li>
+            <% } %>
+        </script>
+        <script>
+            $(function () {
+                var pdj = {
+                    // 网页加载时, 开始初始化
+                    init: function () {
+                        this.checkUser();
+                    },
+                    checkUser: function () {
+                        var _this = this;
+                        $.ajax({
+                            url: "/session",
+                            type: "get",
+                            success: function (data) {
+                                if (data.errno != 0) {
+                                    window.location.href = "../";
+                                } else {
+                                    _this.queryBalance();
+                                }
+                            }
+                        });
+                    },
+                    queryBalance: function () {
+                        $.ajax({
+                            url: "/auctions",
+                            type: "get",
+                            success: function (data) {
+                                console.log(data)
+                                var html = template("templateId", data);
+                                $(".containerlist").html(html);
+                                }
+                            })
+                        }
+                    };
+                    pdj.init();
+                $(".containerlist").on("click", ".bid_btn", function () {
+                    var tokenID = this.dataset['tokenid'];
+                    var weight = $(this).prev().val();
+                    $.ajax({
+                        url: "/auction/bid",
+                        type: "get",
+                        data: {
+                            tokenid: tokenID,
+                            weight: weight
+                        },
+                        success: function (data) {
+                            if (data.status) {
+                                alert("竞拍成功");
+                            }
+                        }
+                    })
+                });
+                $(".containerlist").on("click", "img", function () {
+                    var pixHash = this.dataset['pixhash'];
+                    //当前投票的数量。 var  voteCount=$(this).next().find("span").text();
+
+                    var obj = {
+                        content_hash: pixHash,
+                        voteCount: 1
+                    };
+                    var strparams = JSON.stringify(obj);
+                    console.log(strparams)
+                    $.ajax({
+                        type: "get",
+                        url: "/content/vote",
+                        contentType: "application/json",
+                        data: strparams,
+                        success: function (data) {
+                            if (data.errno != 0) {
+                                alert("投票成功");
+                            }
+                        }
+                    })
+                });
+            });
+        </script>
+    </body>
+</html>

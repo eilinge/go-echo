@@ -1,0 +1,11 @@
+[common]
+port = ":8086"
+[db]
+driver  = "mysql"
+connstr = "root:tester@tcp(127.0.0.1:3306)/copyright?charset=utf8"
+[eth]
+connstr = "http://localhost:8545"
+keydir = "../../../data/keystore"
+fundation = "0xd559d8a8990d0ca570737e3d32c89409c125f0c0"
+pxcaddr = "0x72A97d8Ecc723DeAD6d7DA57328D6ce1048315c5"
+pxaaddr = "0xf6b902b4fb9ef987b4f4c7d4936e49b4b6a06bcc"
