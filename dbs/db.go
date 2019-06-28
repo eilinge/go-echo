@@ -33,6 +33,12 @@ type (
 		Percent     int64  `json:"percent"`
 		Price       int64  `json:"price"`
 	}
+	// BidPerson ...
+	BidPerson struct {
+		TokenID int64  `json:"token_id"`
+		Maxbid  int64  `json:"maxbid"`
+		Address string `json:"address"`
+	}
 )
 
 // DBConn 数据库连接的全局变量

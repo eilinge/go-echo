@@ -20,6 +20,11 @@ import (
 // PageMaxPic ...
 const PageMaxPic = 5
 
+// var mutex *sync.Mutex
+
+// maxBid ...
+var maxBid int64
+
 // PingHandler ...
 func PingHandler(c echo.Context) error {
 	return c.String(http.StatusOK, "pong")
@@ -62,6 +67,14 @@ func Register(c echo.Context) error {
 		resp.Errno = utils.RECODE_IPCERR
 		return err
 	}
+	go func() {
+		err = eths.EthErc20Transfer(configs.Config.Eth.Fundation, "eilinge", address, 5)
+		if err != nil {
+			fmt.Println("Transfer failed when register err: ", err)
+			return
+		}
+		// _, err = eths.EtherTransfer(configs.Config.Eth.Fundation, address)
+	}()
 	//4. 操作Mysql插入数据
 	pwd := fmt.Sprintf("%x", sha256.Sum256([]byte(account.IdentitiyID)))
 	sql := fmt.Sprintf("insert into account(email, username, identity_id, address) values('%s', '%s', '%s', '%s')",
@@ -292,7 +305,7 @@ func Auction(c echo.Context) error {
 		resp.Errno = utils.RECODE_PARAMERR
 		return err
 	}
-	// 4. 插入拍卖数据库
+	// 4. 插入拍卖(auction)数据库
 	auction.Address = address
 	sql := fmt.Sprintf("insert into auction(content_hash, address, token_id, percent, price, status) value('%s','%s',%d,%d,%d,1)",
 		auction.ContentHash, auction.Address, auction.TokenID, auction.Percent, auction.Price)
@@ -302,6 +315,17 @@ func Auction(c echo.Context) error {
 		resp.Errno = utils.RECODE_DBERR
 		return err
 	}
+	// 4.5 插入bidwinner数据库
+	maxBid = auction.Price
+	theWinner := &dbs.BidPerson{Maxbid: auction.Price, Address: auction.Address}
+	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id,weight,address) values('%d', %d','%s');", auction.TokenID, theWinner.Maxbid, theWinner.Address)
+	fmt.Println("winner: ", WinnerSQL)
+	num, err = dbs.Create(WinnerSQL)
+	if err != nil || num <= 0 {
+		resp.Errno = utils.RECODE_DBERR
+		return err
+	}
+	// 5. 开始拍卖执行后, 设置定时器, 时间结束, 自动完成财产的分割/erc20转账
 	return nil
 }
 
@@ -344,6 +368,52 @@ func GetAuctions(c echo.Context) error {
 	return nil
 }
 
+// JoinBid ...
+func JoinBid(c echo.Context) error {
+	// 1. 响应数据结构初始化
+	var resp utils.Resp
+	resp.Errno = utils.RECODE_OK
+	defer utils.ResponseData(c, &resp)
+
+	// 2. 获取参数
+	// price,tokenid
+	price := c.QueryParam("price")
+	tokenID := c.QueryParam("tokenid")
+
+	// 3. session
+	sess, err := session.Get("session", c)
+	if err != nil {
+		fmt.Println("failed to get session")
+		resp.Errno = utils.RECODE_SESSIONERR
+		return err
+	}
+	address, ok := sess.Values["address"].(string)
+	if address == "" || !ok {
+		fmt.Println("failed to get address")
+		resp.Errno = utils.RECODE_SESSIONERR
+		return err
+	}
+	// 进行比较竞拍值, 保存该address
+	_price, _ := strconv.ParseInt(price, 10, 64)
+	_tokenid, _ := strconv.ParseInt(tokenID, 10, 64)
+
+	// mutex.Lock()
+	// defer mutex.Unlock()
+	if _price > maxBid {
+		maxBid = _price
+		theWinner := &dbs.BidPerson{Maxbid: _price, Address: address}
+		sql := fmt.Sprintf("update bidwinner set weight = '%d', address ='%s' where token_id='%d';", theWinner.Maxbid, theWinner.Address, _tokenid)
+		fmt.Println("update bidwinner: ", sql)
+		num, err := dbs.Create(sql)
+		if err != nil || num <= 0 {
+			resp.Errno = utils.RECODE_DBERR
+			return err
+		}
+		fmt.Printf("the account: %s Join bid success ...", address)
+	}
+	return nil
+}
+
 // EndBid ...
 func EndBid(c echo.Context) error {
 	// 1. 响应数据结构初始化
@@ -369,7 +439,7 @@ func EndBid(c echo.Context) error {
 		resp.Errno = utils.RECODE_SESSIONERR
 		return err
 	}
-
+	// 3.5 根据tokenId, 查询出最高价者的address, price
 	// 4. 数据库操作
 	sql := fmt.Sprintf("update auction set percent='%s',status=0 where token_id='%s'", weight, tokenID)
 	_, err = dbs.Create(sql)

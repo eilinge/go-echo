@@ -2,6 +2,7 @@ package eths
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"go-echo/configs"
 	"go-echo/utils"
@@ -17,6 +18,13 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+// TranDetail ...
+type TranDetail struct {
+	From common.Address `json:"from"`
+	To   common.Address `json:"to"`
+	// Value *hexutil.Big   `json:"value"`
+}
 
 // NewAcc ...
 func NewAcc(pass, connstr string) (string, error) {
@@ -136,6 +144,7 @@ func EthSplitAsset(fundation, pass, buyer string, tokenID, weight int64) error {
 	}
 	// string -> [32]byte
 	// SplitAsset(opts *bind.TransactOpts, _tokenId *big.Int, _weight *big.Int, _buyer common.Address)
+	fmt.Printf("tokenID: %d, weight: %d, buyer:%v auth:%v\n", big.NewInt(tokenID), big.NewInt(weight), buyer, fundation)
 	_, err = instance.SplitAsset(auth, big.NewInt(tokenID), big.NewInt(weight), common.HexToAddress(buyer))
 	if err != nil {
 		fmt.Println("failed to SplitAsset", err)
@@ -179,4 +188,31 @@ func EthErc20Transfer(from, pass, seller string, num int64) error {
 	}
 	fmt.Printf("the account: %s Transfer success...\n", from)
 	return nil
+}
+
+// EtherTransfer ...
+func EtherTransfer(from, newAcc string) (string, error) {
+	cli, err := rpc.Dial(configs.Config.Eth.Connstr)
+	if err != nil {
+		fmt.Println("failed to ethclient.Dial", err)
+		return "", err
+	}
+
+	defer cli.Close()
+	var transcationHash string
+	fmt.Printf("from: %s, to：%s\n", from, newAcc)
+	t := &TranDetail{common.HexToAddress(from), common.HexToAddress(newAcc)}
+	data, err := json.Marshal(t)
+	if err != nil {
+		fmt.Println("json Marshal err: ", err)
+	}
+	fmt.Println(data)
+
+	err = cli.Call(&transcationHash, "eth_sendTransaction", data)
+	if err != nil {
+		fmt.Println("failed to connect to eth_sendTransaction", err)
+		return "", err
+	}
+	fmt.Println("eth_sendTransaction successfully")
+	return transcationHash, err
 }
