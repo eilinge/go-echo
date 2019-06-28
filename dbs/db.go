@@ -112,9 +112,9 @@ func Create(sql string) (int64, error) {
 }
 
 // AddContent ...
-func (c *Content) AddContent() error {
-	sql := fmt.Sprintf("insert into content(title, content, content_hash) values('%s', '%s', '%s')",
-		c.Title, c.Content, c.ContentHash)
+func (c *Content) AddContent(price, weight int64) error {
+	sql := fmt.Sprintf("insert into content(title, content, content_hash, price, weight) values('%s', '%s', '%s', '%d', '%d')",
+		c.Title, c.Content, c.ContentHash, price, weight)
 	res, err := DBConn.Exec(sql)
 	if err != nil {
 		fmt.Println("failed to insert content ", err)

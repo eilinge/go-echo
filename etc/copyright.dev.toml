@@ -1,11 +1,11 @@
 [common]
-port = ":8087"
+port = ":8086"
 [db]
 driver  = "mysql"
 connstr = "root:tester@tcp(127.0.0.1:3306)/copyright?charset=utf8"
 [eth]
 connstr = "http://localhost:8545"
 keydir = "../../data/keystore"
-fundation = "0x48754c41cb92bc97b28e6a252841bc215caacc4b"
-pxcaddr = "0xC502b116723F295DAF4691d01f66E4cc5Bea07FC"
-pxaaddr = "0x712027f7ecc6c7af41a66ded8a03bb6f24940a48"
+fundation = "0x839ce39c7942e33280daede63598c26170bc0d30"
+pxcaddr = "0x09e8cf63039828B4c6F66B09782feAEe65f34763"
+pxaaddr = "0x1f52c2a2e52f22151eeb1b9a1edbc3dca132e6b2"

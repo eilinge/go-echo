@@ -41,7 +41,7 @@
                                     </ul>
                                 </li>
                                 <li>
-                                    <a href="#">我的资产</a>
+                                    <a href="balancelist.html">我的资产</a>
                                 </li>
                                 <li class="active">
                                     <a href="auctionlist.html">拍卖所</a>
@@ -133,13 +133,13 @@
                     pdj.init();
                 $(".containerlist").on("click", ".bid_btn", function () {
                     var tokenID = this.dataset['tokenid'];
-                    var weight = $(this).prev().val();
+                    var price = $(this).prev().val();
                     $.ajax({
                         url: "/auction/bid",
                         type: "get",
                         data: {
                             tokenid: tokenID,
-                            weight: weight
+                            price: price
                         },
                         success: function (data) {
                             if (data.status) {

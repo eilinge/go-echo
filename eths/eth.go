@@ -45,7 +45,7 @@ func NewAcc(pass, connstr string) (string, error) {
 }
 
 // Upload ...
-func Upload(from, pass, hash, data string) error {
+func Upload(from, pass, hash, data string, price, weight int64) error {
 	cli, err := ethclient.Dial(configs.Config.Eth.Connstr)
 	if err != nil {
 		fmt.Println("failed to ethclient.Dial", err)
@@ -70,7 +70,7 @@ func Upload(from, pass, hash, data string) error {
 		return err
 	}
 	// string -> [32]byte
-	_, err = instance.Mint(auth, common.HexToHash(hash), big.NewInt(100), big.NewInt(100), data)
+	_, err = instance.Mint(auth, common.HexToHash(hash), big.NewInt(price), big.NewInt(weight), data)
 	if err != nil {
 		fmt.Println("failed to instance.Mint", err)
 		return err
@@ -144,13 +144,14 @@ func EthSplitAsset(fundation, pass, buyer string, tokenID, weight int64) error {
 	}
 	// string -> [32]byte
 	// SplitAsset(opts *bind.TransactOpts, _tokenId *big.Int, _weight *big.Int, _buyer common.Address)
-	fmt.Printf("tokenID: %d, weight: %d, buyer:%v auth:%v\n", big.NewInt(tokenID), big.NewInt(weight), buyer, fundation)
+	// fmt.Printf("tokenID: %d, weight: %d, buyer:%v auth:%v\n", big.NewInt(tokenID), big.NewInt(weight), buyer, fundation)
 	_, err = instance.SplitAsset(auth, big.NewInt(tokenID), big.NewInt(weight), common.HexToAddress(buyer))
 	if err != nil {
 		fmt.Println("failed to SplitAsset", err)
 		return err
 	}
 	fmt.Printf("the account: %s SplitAsset success...\n", fundation)
+	// 将新的资产存入数据库中, 获取新的asset, token_id = asset.length-1
 	return nil
 }
 

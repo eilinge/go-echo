@@ -40,3 +40,10 @@
         copyright.dev.toml合约地址错误
     2. failed to bind.NewTransactor could not decrypt key with given passphrase
         网页无法获取登录账户的address, 需要重新登录
+    3. num, err := dbs.Create(sql), 不能使用num<=0做判断
+
+### 数据库操作
+
+    1. create table bidwinner (id int primary key not null auto_increment, token_id int not null unique, price int not null, address varchar(120));
+    2. create table content (content_id int primary key not null auto_increment, title varchar(100), content varchar(256),
+    content_hash varchar(100), price int, weight int,ts timestamp not null);
