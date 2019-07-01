@@ -1,0 +1,21 @@
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func EndBid() {
+	fmt.Println("you are right")
+}
+func main() {
+	ticker := time.NewTicker(time.Minute)
+	go func() {
+		for i := 2; i > 0; i-- {
+			// for {
+			<-ticker.C
+			EndBid()
+		}
+	}()
+	time.Sleep(time.Minute * 3)
+}

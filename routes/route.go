@@ -208,7 +208,7 @@ func UpLoad(c echo.Context) error {
 
 	content.Title = h.Filename
 	// 5. write to dbs / 给上传图片页面, 添加weight, price, 并一起传入
-	content.AddContent()
+	// content.AddContent()
 
 	// 6. 操作以太坊
 	sess, _ := session.Get("session", c)
@@ -219,13 +219,20 @@ func UpLoad(c echo.Context) error {
 	}
 	// from, pass, hash, data string
 	fmt.Printf("price: %d, weight: %d\n", price, weight)
-	go eths.Upload(fromAddr, passwd, content.ContentHash, content.Title, price, weight)
+	go func() {
+		err = eths.Upload(fromAddr, passwd, content.ContentHash, content.Title, price, weight)
+		if err != nil {
+			resp.Errno = utils.RECODE_IPCERR
+			return
+		}
+		content.AddContent()
+	}()
 	return nil
 }
 
 // GetContents 根据用户查找出其所有资产
 func GetContents(c echo.Context) error {
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Second * 2)
 
 	//1. 响应数据结构初始化
 	var resp utils.Resp
@@ -343,6 +350,7 @@ func Auction(c echo.Context) error {
 	ticker := time.NewTicker(time.Minute)
 	go func() {
 		for i := 1; i > 0; i-- {
+			// for {
 			<-ticker.C
 			EndBid(auction.TokenID, auction.Percent)
 		}
@@ -476,21 +484,23 @@ func EndBid(tokenID, weight int64) error {
 		return err
 	}
 	// 4.1 更新content数据库: percent(总的-参与拍卖的)/price()
-	weightSQL := fmt.Sprintf("select a.percent,b.weight,b.price from auction a, content b where a.content_hash = b.content_hash and token_id ='%d'", tokenID)
+	weightSQL := fmt.Sprintf("select a.percent,b.weight,b.price,a.content_hash from auction a, content b where a.content_hash = b.content_hash and token_id ='%d'", tokenID)
 	auctionWeight, num, err := dbs.DBQuery(weightSQL)
 	if err != nil || num <= 0 {
 		fmt.Println("failed to weightSQL...", err)
 		return err
 	}
-	aPercent, _ := strconv.ParseInt(auctionWeight[0]["percent"], 10, 32)
+	// aPercent, _ := strconv.ParseInt(auctionWeight[0]["percent"], 10, 32)
 	bWeight, _ := strconv.ParseInt(auctionWeight[0]["weight"], 10, 32)
 	bPrice, _ := strconv.ParseInt(auctionWeight[0]["price"], 10, 32)
+	contentHash := auctionWeight[0]["content_hash"]
 	_newPriceAuct, _ := strconv.ParseInt(_priceAuct, 10, 32)
-
-	newWeight := bWeight - aPercent
+	// 总的权重  - 拍卖时的权重
+	newWeight := bWeight - weight
 	// 拍卖之后的价格 - 拍卖时的价格 + 原本的价格
-	newPrice := (_newPriceAuct - price) + bPrice
-	UpConSQL := fmt.Sprintf("update content set price='%d' ,weight='%d' where token_id ='%d';", newPrice, newWeight, tokenID)
+	newPrice := (price - _newPriceAuct) + bPrice
+	// content_hash 唯一
+	UpConSQL := fmt.Sprintf("update content set price='%d' ,weight='%d' where content_hash ='%s';", newPrice, newWeight, contentHash)
 	_, err = dbs.Create(UpConSQL)
 	if err != nil {
 		fmt.Println("failed to update content...", err)
@@ -513,7 +523,7 @@ func EndBid(tokenID, weight int64) error {
 			return
 		}
 		// _price, _ := strconv.ParseInt(price, 10, 32)
-		err = eths.EthErc20Transfer(address, "eilinge", to, price)
+		err = eths.EthErc20Transfer(address, "eilinge", to, (price - _newPriceAuct))
 		if err != nil {
 			fmt.Println("failed to eths.EEthErc20Transfer ", err)
 			return

@@ -15,18 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 )
 
-// Reference imports to suppress errors if they are not otherwise used.
-var (
-	_ = big.NewInt
-	_ = strings.NewReader
-	_ = ethereum.NotFound
-	_ = abi.U256
-	_ = bind.Bind
-	_ = common.Big1
-	_ = types.BloomLookup
-	_ = event.NewSubscription
-)
-
 // PxaABI is the input ABI used to generate the binding from.
 const PxaABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_approved\",\"type\":\"address\"},{\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_from\",\"type\":\"address\"},{\"name\":\"_price\",\"type\":\"uint256\"},{\"name\":\"_tokenId\",\"type\":\"uint256\"},{\"name\":\"_to\",\"type\":\"address\"}],\"name\":\"auction\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_contentHash\",\"type\":\"bytes32\"},{\"name\":\"_price\",\"type\":\"uint256\"},{\"name\":\"_weight\",\"type\":\"uint256\"},{\"name\":\"_data\",\"type\":\"string\"}],\"name\":\"mint\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_from\",\"type\":\"address\"},{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_from\",\"type\":\"address\"},{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_tokenId\",\"type\":\"uint256\"},{\"name\":\"_data\",\"type\":\"bytes\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_operator\",\"type\":\"address\"},{\"name\":\"_approved\",\"type\":\"bool\"}],\"name\":\"setApprovalForAll\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_tokenId\",\"type\":\"uint256\"},{\"name\":\"_weight\",\"type\":\"uint256\"},{\"name\":\"_buyer\",\"type\":\"address\"}],\"name\":\"splitAsset\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_from\",\"type\":\"address\"},{\"name\":\"_to\",\"type\":\"address\"},{\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"vote\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"_hash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"onNewAsset\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_from\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_to\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_approved\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"_owner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"_operator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"_approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"assets\",\"outputs\":[{\"name\":\"contentHash\",\"type\":\"bytes32\"},{\"name\":\"price\",\"type\":\"uint256\"},{\"name\":\"weight\",\"type\":\"uint256\"},{\"name\":\"metaData\",\"type\":\"string\"},{\"name\":\"voteCount\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"fundation\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"getApproved\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"getOwnerToken\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getPXCAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"}],\"name\":\"getPXCBalance\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\"},{\"name\":\"_operator\",\"type\":\"address\"}],\"name\":\"isApprovedForAll\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_tokenId\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
@@ -673,7 +661,7 @@ type PxaApproval struct {
 
 // FilterApproval is a free log retrieval operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: e Approval(_owner indexed address, _approved indexed address, _tokenId indexed uint256)
+// Solidity: event Approval(_owner indexed address, _approved indexed address, _tokenId indexed uint256)
 func (_Pxa *PxaFilterer) FilterApproval(opts *bind.FilterOpts, _owner []common.Address, _approved []common.Address, _tokenId []*big.Int) (*PxaApprovalIterator, error) {
 
 	var _ownerRule []interface{}
@@ -698,7 +686,7 @@ func (_Pxa *PxaFilterer) FilterApproval(opts *bind.FilterOpts, _owner []common.A
 
 // WatchApproval is a free log subscription operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
 //
-// Solidity: e Approval(_owner indexed address, _approved indexed address, _tokenId indexed uint256)
+// Solidity: event Approval(_owner indexed address, _approved indexed address, _tokenId indexed uint256)
 func (_Pxa *PxaFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *PxaApproval, _owner []common.Address, _approved []common.Address, _tokenId []*big.Int) (event.Subscription, error) {
 
 	var _ownerRule []interface{}
@@ -823,7 +811,7 @@ type PxaApprovalForAll struct {
 
 // FilterApprovalForAll is a free log retrieval operation binding the contract event 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31.
 //
-// Solidity: e ApprovalForAll(_owner indexed address, _operator indexed address, _approved bool)
+// Solidity: event ApprovalForAll(_owner indexed address, _operator indexed address, _approved bool)
 func (_Pxa *PxaFilterer) FilterApprovalForAll(opts *bind.FilterOpts, _owner []common.Address, _operator []common.Address) (*PxaApprovalForAllIterator, error) {
 
 	var _ownerRule []interface{}
@@ -844,7 +832,7 @@ func (_Pxa *PxaFilterer) FilterApprovalForAll(opts *bind.FilterOpts, _owner []co
 
 // WatchApprovalForAll is a free log subscription operation binding the contract event 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31.
 //
-// Solidity: e ApprovalForAll(_owner indexed address, _operator indexed address, _approved bool)
+// Solidity: event ApprovalForAll(_owner indexed address, _operator indexed address, _approved bool)
 func (_Pxa *PxaFilterer) WatchApprovalForAll(opts *bind.WatchOpts, sink chan<- *PxaApprovalForAll, _owner []common.Address, _operator []common.Address) (event.Subscription, error) {
 
 	var _ownerRule []interface{}
@@ -965,7 +953,7 @@ type PxaTransfer struct {
 
 // FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: e Transfer(_from indexed address, _to indexed address, _tokenId indexed uint256)
+// Solidity: event Transfer(_from indexed address, _to indexed address, _tokenId indexed uint256)
 func (_Pxa *PxaFilterer) FilterTransfer(opts *bind.FilterOpts, _from []common.Address, _to []common.Address, _tokenId []*big.Int) (*PxaTransferIterator, error) {
 
 	var _fromRule []interface{}
@@ -990,7 +978,7 @@ func (_Pxa *PxaFilterer) FilterTransfer(opts *bind.FilterOpts, _from []common.Ad
 
 // WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
 //
-// Solidity: e Transfer(_from indexed address, _to indexed address, _tokenId indexed uint256)
+// Solidity: event Transfer(_from indexed address, _to indexed address, _tokenId indexed uint256)
 func (_Pxa *PxaFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *PxaTransfer, _from []common.Address, _to []common.Address, _tokenId []*big.Int) (event.Subscription, error) {
 
 	var _fromRule []interface{}
@@ -1115,7 +1103,7 @@ type PxaOnNewAsset struct {
 
 // FilterOnNewAsset is a free log retrieval operation binding the contract event 0x656ff40b8e1f65ac976060cda3f8f3e146ac6bb0421c1fe1010c92c350e57db3.
 //
-// Solidity: e onNewAsset(_hash bytes32, _owner address, _tokenId uint256)
+// Solidity: event onNewAsset(_hash bytes32, _owner address, _tokenId uint256)
 func (_Pxa *PxaFilterer) FilterOnNewAsset(opts *bind.FilterOpts) (*PxaOnNewAssetIterator, error) {
 
 	logs, sub, err := _Pxa.contract.FilterLogs(opts, "onNewAsset")
@@ -1127,7 +1115,7 @@ func (_Pxa *PxaFilterer) FilterOnNewAsset(opts *bind.FilterOpts) (*PxaOnNewAsset
 
 // WatchOnNewAsset is a free log subscription operation binding the contract event 0x656ff40b8e1f65ac976060cda3f8f3e146ac6bb0421c1fe1010c92c350e57db3.
 //
-// Solidity: e onNewAsset(_hash bytes32, _owner address, _tokenId uint256)
+// Solidity: event onNewAsset(_hash bytes32, _owner address, _tokenId uint256)
 func (_Pxa *PxaFilterer) WatchOnNewAsset(opts *bind.WatchOpts, sink chan<- *PxaOnNewAsset) (event.Subscription, error) {
 
 	logs, sub, err := _Pxa.contract.WatchLogs(opts, "onNewAsset")

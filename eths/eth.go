@@ -59,6 +59,7 @@ func Upload(from, pass, hash, data string, price, weight int64) error {
 	// 设置签名, owner的keyStore文件
 	// 需要获得文件名字
 	fileName, err := utils.GetFileName(string([]rune(from)[2:]), configs.Config.Eth.Keydir)
+
 	file, err := os.Open(configs.Config.Eth.Keydir + "/" + fileName)
 	if err != nil {
 		fmt.Println("failed to os.Open", err)
@@ -145,7 +146,10 @@ func EthSplitAsset(fundation, pass, buyer string, tokenID, weight int64) error {
 	// string -> [32]byte
 	// SplitAsset(opts *bind.TransactOpts, _tokenId *big.Int, _weight *big.Int, _buyer common.Address)
 	// fmt.Printf("tokenID: %d, weight: %d, buyer:%v auth:%v\n", big.NewInt(tokenID), big.NewInt(weight), buyer, fundation)
+
+	// 分割新的资产, 添加事件, 将新的资产存储content文本中
 	_, err = instance.SplitAsset(auth, big.NewInt(tokenID), big.NewInt(weight), common.HexToAddress(buyer))
+
 	if err != nil {
 		fmt.Println("failed to SplitAsset", err)
 		return err

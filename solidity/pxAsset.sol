@@ -29,6 +29,7 @@ contract pxAsset is ERC721 {
     
     event onNewAsset(bytes32 _hash, address _owner, uint _tokenId);
     
+    // 存储下, 给予投票的address, 选出优秀的作品之后, 对投票者给予一定的erc20奖励
     struct Asset {
         bytes32 contentHash;
         uint price;
@@ -175,7 +176,7 @@ contract pxAsset is ERC721 {
         pxcoin.transferFrom(_from, _to, _price);
     }
     
-    function splitAsset(uint _tokenId, uint _weight, address _buyer) onlyOwner() canTransfer(_tokenId) validToken(_tokenId) public returns(uint) {
+    function splitAsset(uint _tokenId, uint _weight, address _buyer) onlyOwner() public returns(uint) {
         require(_weight <= 100);
         require( address(0) != _buyer);
         Asset storage a = assets[_tokenId];
@@ -188,6 +189,7 @@ contract pxAsset is ERC721 {
         newA.voteCount = uint(0);
         addToken(_buyer, tokenId);
         _ownerToken[_buyer].push(tokenId);
+        emit onNewAsset(a.contentHash, msg.sender, tokenId);
         return tokenId;
     }
     

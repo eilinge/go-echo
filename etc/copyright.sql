@@ -7,6 +7,7 @@ drop table if exists account_content;
 drop table if exists aution;
 drop table if exists account;
 drop table if exists content;
+drop table if exists bidwinner;
 create table account
 (
    account_id           int not null primary key auto_increment,
@@ -20,13 +21,16 @@ CREATE UNIQUE INDEX account_name_uindex ON copyright.account (username);
 alter table account comment '账户表';
 
 
-create table content
+create table content 
 (
-   content_id           int not null primary key auto_increment,
-   title                varchar(100),
-   content              varchar(256),
-   content_hash         varchar(100),
-   ts                   timestamp
+   content_id           int primary key not null auto_increment, 
+   title                varchar(100), 
+   content              varchar(256), 
+   content_hash         varchar(100), 
+   -- content_hash         varchar(100) unique, 分割完资产, 存储的hash与原资产一致
+   price                int, 
+   weight               int,
+   ts                   timestamp not null
 );
 
 create table account_content
@@ -49,6 +53,13 @@ create table auction
    ts                   timestamp
 );
 
+create table bidwinner 
+(
+   id                   int primary key not null auto_increment, 
+   token_id             int not null unique, 
+   price                int not null, 
+   address              varchar(120)
+);
 
 create table vote
 (
