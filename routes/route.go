@@ -24,8 +24,8 @@ const PageMaxPic = 5
 
 var mutex sync.Mutex
 
-// maxBid ...
-var maxBid int64
+// Price ...
+var Price int64
 
 // PingHandler ...
 func PingHandler(c echo.Context) error {
@@ -113,6 +113,7 @@ func Login(c echo.Context) error {
 		resp.Errno = utils.RECODE_PARAMERR
 		return err
 	}
+	fmt.Println("account.IdentitiyID: ", account.UserName, account.IdentitiyID)
 	passwd = account.IdentitiyID
 
 	//3. 操作Mysql查询数据
@@ -171,6 +172,12 @@ func UpLoad(c echo.Context) error {
 	//2. 解析数据
 	content := &dbs.Content{}
 
+	price, _ := strconv.ParseInt(c.FormValue("price"), 10, 32)
+	weight, _ := strconv.ParseInt(c.FormValue("weight"), 10, 32)
+
+	content.Price = price
+	content.Weight = weight
+
 	h, err := c.FormFile("fileName") // 解析文件名
 	if err != nil {
 		fmt.Println("failed to FormFile: ", err)
@@ -201,7 +208,7 @@ func UpLoad(c echo.Context) error {
 
 	content.Title = h.Filename
 	// 5. write to dbs / 给上传图片页面, 添加weight, price, 并一起传入
-	content.AddContent(100, 100)
+	content.AddContent()
 
 	// 6. 操作以太坊
 	sess, _ := session.Get("session", c)
@@ -211,7 +218,8 @@ func UpLoad(c echo.Context) error {
 		return errors.New("no session")
 	}
 	// from, pass, hash, data string
-	go eths.Upload(fromAddr, passwd, content.ContentHash, content.Title, 100, 100)
+	fmt.Printf("price: %d, weight: %d\n", price, weight)
+	go eths.Upload(fromAddr, passwd, content.ContentHash, content.Title, price, weight)
 	return nil
 }
 
@@ -322,9 +330,9 @@ func Auction(c echo.Context) error {
 	}
 	fmt.Println("start insert into bidWinner...")
 	// 4.5 插入bidwinner数据库
-	maxBid = auction.Price
-	theWinner := &dbs.BidPerson{Maxbid: auction.Price, Address: auction.Address}
-	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id,price,address) values('%d', '%d','%s');", auction.TokenID, theWinner.Maxbid, theWinner.Address)
+	Price = auction.Price
+	theWinner := &dbs.BidPerson{Price: auction.Price, Address: auction.Address}
+	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id,price,address) values('%d', '%d','%s');", auction.TokenID, theWinner.Price, theWinner.Address)
 	fmt.Println("winner: ", WinnerSQL)
 	_, err = dbs.Create(WinnerSQL)
 	if err != nil {
@@ -334,7 +342,7 @@ func Auction(c echo.Context) error {
 	// 5. 开始拍卖执行后, 设置定时器, 时间结束, 自动完成财产的分割/erc20转账
 	ticker := time.NewTicker(time.Minute)
 	go func() {
-		for {
+		for i := 1; i > 0; i-- {
 			<-ticker.C
 			EndBid(auction.TokenID, auction.Percent)
 		}
@@ -367,7 +375,7 @@ func GetAuctions(c echo.Context) error {
 	// 3. 查看拍卖
 	// 自动识别出查询字段所在tables
 	// sql := fmt.Sprintf("select a.*,b.title from auction a, content b where a.content_hash=b.content_hash and a.status=1;")
-	sql := fmt.Sprintf("select a.content_hash,title,price,token_id from content a, auction b where a.content_hash=b.content_hash and b.status=1")
+	sql := fmt.Sprintf("select a.content_hash,title,b.price,token_id from content a, auction b where a.content_hash=b.content_hash and b.status=1")
 	fmt.Println(sql)
 	values, num, err := dbs.DBQuery(sql)
 	if err != nil || num <= 0 {
@@ -418,17 +426,17 @@ func JoinBid(c echo.Context) error {
 		resp.Errno = utils.RECODE_DBERR
 		return err
 	}
-	maxBid, _ = strconv.ParseInt(value[0]["price"], 10, 64)
+	Price, _ = strconv.ParseInt(value[0]["price"], 10, 64)
 
 	// 同步锁, 防止多人同时修改数据
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	fmt.Printf("the price: %d and maxBid: %d\n", _price, maxBid)
-	if _price > maxBid {
-		maxBid = _price
-		theWinner := &dbs.BidPerson{Maxbid: _price, Address: address}
-		sql := fmt.Sprintf("update bidwinner set price = '%d', address ='%s' where token_id='%d';", theWinner.Maxbid, theWinner.Address, _tokenid)
+	fmt.Printf("the price: %d and Price: %d\n", _price, Price)
+	if _price > Price {
+		Price = _price
+		theWinner := &dbs.BidPerson{Price: _price, Address: address}
+		sql := fmt.Sprintf("update bidwinner set price = '%d', address ='%s' where token_id='%d';", theWinner.Price, theWinner.Address, _tokenid)
 		fmt.Println("update bidwinner: ", sql)
 		_, err := dbs.Create(sql)
 		if err != nil {
@@ -452,6 +460,15 @@ func EndBid(tokenID, weight int64) error {
 	price, _ := strconv.ParseInt(winDetail[0]["price"], 10, 32)
 	address := winDetail[0]["address"]
 	// 4. 数据库操作, price
+	// 4.1 获取拍卖时的价格
+	priAuctSQL := fmt.Sprintf("select price from  auction where token_id='%d' and status=1", tokenID)
+	priceAuct, num, err := dbs.DBQuery(priAuctSQL)
+	if err != nil || num <= 0 {
+		fmt.Println("failed to priAuctSQL select...", err)
+		return err
+	}
+	_priceAuct := priceAuct[0]["price"]
+
 	sql := fmt.Sprintf("update auction set price='%d',status=0 where token_id='%d'", price, tokenID)
 	_, err = dbs.Create(sql)
 	if err != nil {
@@ -468,9 +485,11 @@ func EndBid(tokenID, weight int64) error {
 	aPercent, _ := strconv.ParseInt(auctionWeight[0]["percent"], 10, 32)
 	bWeight, _ := strconv.ParseInt(auctionWeight[0]["weight"], 10, 32)
 	bPrice, _ := strconv.ParseInt(auctionWeight[0]["price"], 10, 32)
+	_newPriceAuct, _ := strconv.ParseInt(_priceAuct, 10, 32)
 
 	newWeight := bWeight - aPercent
-	newPrice := price - bPrice
+	// 拍卖之后的价格 - 拍卖时的价格 + 原本的价格
+	newPrice := (_newPriceAuct - price) + bPrice
 	UpConSQL := fmt.Sprintf("update content set price='%d' ,weight='%d' where token_id ='%d';", newPrice, newWeight, tokenID)
 	_, err = dbs.Create(UpConSQL)
 	if err != nil {

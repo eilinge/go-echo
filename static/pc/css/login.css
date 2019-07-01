@@ -1,4 +1,113 @@
-.artilce_content {
+@import "../assets/font-awesome-4.7.0/css/font-awesome.min.css";
+
+ol,
+ul {
+    list-style: none;
+}
+a {
+    text-decoration: none;
+    color: #333;
+}
+a:hover {
+    text-decoration: none;
+}
+.mybanner {
+    width: 100%;
+}
+.carousel-inner > .item > a > img,
+.carousel-inner > .item > img {
+    height: 500px;
+}
+.mybanner_Image img {
+    width: 100%;
+    display: block;
+}
+
+.yc_top {
+    position: relative;
+}
+.yc_top .yc_nav_header {
+    margin-bottom: 0;
+    position: absolute;
+    width: 100%;
+    left: 0;
+    top: 0;
+    z-index: 99;
+}
+.yc_top .yc_nav_header .yc_nav {
+    width: 90%;
+    margin: 0 auto;
+    background: none;
+    border: none;
+
+}
+.yc_top .yc_nav_header .yc_nav a {
+    color: #fff;
+}
+.yc_top .yc_nav_header .yc_navbar_nav li.active a {
+    background: none;
+    font-size: 16px;
+    color: #fff;
+}
+
+.yc_top .yc_nav_bar {
+    position: absolute;
+    left: 0;
+    bottom: 10px;
+    width: 100%;
+
+}
+
+/* .yc_top .yc_nav_bar ul {} */
+
+.yc_top .yc_nav_bar ul li {
+    width: 50%;
+    float: left;
+}
+.yc_top .yc_nav_bar ul li a {
+
+    height: 50px;
+    line-height: 50px;
+    width: 200px;
+    background: #0cb762;
+    border-radius: 5px;
+    text-align: center;
+    color: #fff;
+
+}
+.yc_top .yc_nav_bar ul li a:hover {
+    text-decoration: none;
+}
+.yc_top .yc_nav_bar ul li:nth-of-type(1) a {
+    float: right;
+    margin-right: 17%;
+}
+.yc_top .yc_nav_bar ul li:nth-of-type(2) a {
+    float: left;
+    margin-left: 10%;
+}
+.yc_content {
+    width: 900px;
+    margin: 0 auto;
+    padding-top: 40px;
+}
+.yc_content .content_top {
+    overflow: hidden;
+}
+.yc_content .content_top li {
+    width: 50%;
+    float: left;
+    text-align: center;
+
+}
+/* .yc_content .content_top li:nth-child(1) {} */
+.yc_content .content_top li div {
+    margin-top: 20px;
+}
+.yc_content .content_top li span {
+    font-size: 20px;
+}
+.login-box {
   width: 280px;
   /* position: 规定元素的定位类型。
   absolute 生成绝对定位的元素，相对于 static 定位以外的第一个父元素进行定位。 元素的位置通过 "left", "top","right"以及 "bottom"属性进行规定。
@@ -16,7 +125,7 @@
   color: white;
 }
 
-.artilce_content h3{
+.login-box h3{
   float: left;
   font-size: 40px;
   /* border-bottom: 设置一个声明中所有底部边框属性。 可以设置的属性分别（按顺序）：border-bottom-width, border-bottom-style, 和border-bottom-color.
@@ -30,7 +139,7 @@
   padding: 13px 0;
 }
 
-.form-box {
+.yc_login_form {
   width: 100%;
   /* overflow: 定义溢出元素内容区的内容会如何处理
   visible 默认值。内容不会被修剪，会呈现在元素框之外。
@@ -45,7 +154,7 @@
   border-bottom: 1px solid #8BC34A;
 }
 
-.form-box span {
+.yc_login_form i {
   width: 26px;
   /* float 属性定义元素在哪个方向浮动
   left 元素向左浮动。
@@ -55,7 +164,7 @@
   text-align: center;
 }
 
-.form-box input {
+.yc_login_form input {
   border: none;
   outline: none;
   background: none;
@@ -66,7 +175,7 @@
   margin: 10px;
 }
 
-.submit {
+.yc_login_btn {
   width: 100%;
   background: none;
   /* border 简写属性在一个声明设置所有的边框属性 */

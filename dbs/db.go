@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"go-echo/configs"
 	_ "strconv"
+	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // content: content->content_hash
 // account_content: content_hash -> token_id ->address
+
+const defaultFormat = "2006-01-02 15:04:05 PM"
 
 type (
 	// Accounts ...
@@ -24,6 +28,8 @@ type (
 		Title       string `json:"title"`
 		Content     string `json:"content"`
 		ContentHash string `json:"content_hash"`
+		Price       int64  `json:"price"`
+		Weight      int64  `json:"weight"`
 	}
 	// Auction ...
 	Auction struct {
@@ -36,7 +42,7 @@ type (
 	// BidPerson ...
 	BidPerson struct {
 		TokenID int64  `json:"token_id"`
-		Maxbid  int64  `json:"maxbid"`
+		Price   int64  `json:"price"`
 		Address string `json:"address"`
 	}
 )
@@ -112,9 +118,12 @@ func Create(sql string) (int64, error) {
 }
 
 // AddContent ...
-func (c *Content) AddContent(price, weight int64) error {
-	sql := fmt.Sprintf("insert into content(title, content, content_hash, price, weight) values('%s', '%s', '%s', '%d', '%d')",
-		c.Title, c.Content, c.ContentHash, price, weight)
+func (c *Content) AddContent() error {
+	// ts := time.Now().Format(defaultFormat)
+	ts := strings.Replace(time.Now().Format(defaultFormat), " PM", "", 1)
+	sql := fmt.Sprintf("insert into content(title, content, content_hash, price, weight, ts) values('%s', '%s', '%s', '%d', '%d','%s')",
+		c.Title, c.Content, c.ContentHash, c.Price, c.Weight, ts)
+	fmt.Println("insert into content", sql)
 	res, err := DBConn.Exec(sql)
 	if err != nil {
 		fmt.Println("failed to insert content ", err)

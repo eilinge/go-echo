@@ -1,3 +1,12 @@
+body {
+  margin: 0px;
+  padding: 0px;
+  background: url(../upload/1556116139af85.jpg) no-repeat;
+  /* color: black; */
+  /* background-color: blue; */
+  background-size: cover; /*全网页*/
+}
+
 .artilce_content {
   width: 280px;
   /* position: 规定元素的定位类型。
@@ -14,20 +23,6 @@
   */
   transform: translate(-50%, -50%);
   color: white;
-}
-
-.artilce_content h3{
-  float: left;
-  font-size: 40px;
-  /* border-bottom: 设置一个声明中所有底部边框属性。 可以设置的属性分别（按顺序）：border-bottom-width, border-bottom-style, 和border-bottom-color.
-  dotted: 定义一个点线边框
-  dashed: 定义一个虚线边框
-  solid: 定义实线边框
-  double: 定义两个边框。 两个边框的宽度和 border-width 的值相同 */
-  border-bottom: 5px solid #8BC34A;
-  /* margin-bottom属性设置元素的下边距。 */
-  margin-bottom: 50px;
-  padding: 13px 0;
 }
 
 .form-box {
