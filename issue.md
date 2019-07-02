@@ -38,11 +38,24 @@
 
     1. failed to instance.Mint no contract code at given address
         copyright.dev.toml合约地址错误
+
     2. failed to bind.NewTransactor could not decrypt key with given passphrase
         网页无法获取登录账户的address, 需要重新登录
-    3. num, err := dbs.Create(sql), 不能使用num<=0做判断
+
+    3. num, err := dbs.Create(sql)
+        不能使用num<=0做判断
+
+    4. 刚注册的用户如果没有ether, 进行图片认证, 则无法进行上传图片认证, 但是会被存储新的资产到content数据库中
+        先进行图片认证, 当无法进行图片认证之后, 返回错误报告, 如果成功, 再进行存储content操作
+
+    5. 进行资产分割时, 假使用户erc721 token不足, 也会先进行资产分割成功, 无法完成转账操作
+        先对用户资产余额判断操作, 假使不足, 返回错误报告, 如果成功, 进行资产分割成功, 和转账操作
 
 ### 数据库操作
 
     1. create table bidwinner (id int primary key not null auto_increment, token_id int not null unique, price int not null, address varchar(120));
     2. create table content (content_id int primary key not null auto_increment, title varchar(100), content varchar(256), content_hash varchar(100) unique, price int, weight int,ts timestamp not null;
+
+### 程序逻辑
+
+    1. 当2个操作没有直接关联时, 将数据库操作, 转账操作放到后面执行, 提前对其不足条件进行判断

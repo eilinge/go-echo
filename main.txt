@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"go-echo/configs"
 	"go-echo/eths"
@@ -37,6 +38,15 @@ func main() {
 		Level: 5,
 	}))
 	go eths.EventSubscribe("ws://localhost:8546", configs.Config.Eth.PxaAddr)
+	ticker := time.NewTicker(time.Second * 10)
+	go func() {
+		for i := 5; i > 0; i-- {
+			// for {
+			<-ticker.C
+			eths.ViewVoteCount()
+		}
+	}()
+
 	staticFile(e) // 静态文件处理调用
 
 	e.GET("/ping", routes.PingHandler)                  // 路由测试函数
@@ -49,5 +59,6 @@ func main() {
 	e.POST("/auction", routes.Auction)                  // 开始拍卖
 	e.GET("/auctions", routes.GetAuctions)              // 查看拍卖
 	e.GET("/auction/bid", routes.JoinBid)               // 参与拍卖
+	e.GET("/content/vote", routes.Vote)                 // 进行投票
 	e.Logger.Fatal(e.Start(configs.Config.Common.Port)) // 启动服务
 }

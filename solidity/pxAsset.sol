@@ -189,7 +189,7 @@ contract pxAsset is ERC721 {
         newA.voteCount = uint(0);
         addToken(_buyer, tokenId);
         _ownerToken[_buyer].push(tokenId);
-        emit onNewAsset(a.contentHash, msg.sender, tokenId);
+        emit onNewAsset(a.contentHash, _buyer, tokenId);
         return tokenId;
     }
     

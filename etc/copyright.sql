@@ -61,11 +61,13 @@ create table bidwinner
    address              varchar(120)
 );
 
+-- 记录投票信息
 create table vote
 (
    vote_id              int primary key auto_increment,
    address              varchar(100),   
-   content_hash         varchar(256),
+   -- content_hash         varchar(256),
+   token_id             int,
    vote_time            timestamp,
    comment              varchar(100)
 );

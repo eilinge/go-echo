@@ -19,6 +19,8 @@ import (
 	"github.com/labstack/echo-contrib/session"
 )
 
+const Default_Time = "2006-01-02 03:04:05 PM"
+
 // PageMaxPic ...
 const PageMaxPic = 5
 
@@ -529,5 +531,44 @@ func EndBid(tokenID, weight int64) error {
 			return
 		}
 	}()
+	return nil
+}
+
+// Vote ...
+func Vote(c echo.Context) error {
+	// 1. 响应数据结构初始化
+	var resp utils.Resp
+	resp.Errno = utils.RECODE_OK
+	defer utils.ResponseData(c, &resp)
+
+	// 2. 获取参数
+	tokenID, _ := strconv.ParseInt(c.QueryParam("token_id"), 10, 32)
+	fmt.Println("tokenID: ", c.QueryParam("token_id"))
+	// 3. session
+	sess, err := session.Get("session", c)
+	if err != nil {
+		fmt.Println("failed to get session")
+		resp.Errno = utils.RECODE_SESSIONERR
+		return err
+	}
+	address, ok := sess.Values["address"].(string)
+	if address == "" || !ok {
+		fmt.Println("failed to get address")
+		resp.Errno = utils.RECODE_SESSIONERR
+		return err
+	}
+	// 4. 存储到数据库
+	b := time.Now().Format(Default_Time)
+	ts := b[:len(b)-3]
+	VoteSQL := fmt.Sprintf("insert into vote(address, token_id, vote_time) value('%s', '%d', '%s')", address, tokenID, ts)
+	fmt.Println("VoteSQL: ", VoteSQL)
+	_, err = dbs.Create(VoteSQL)
+	if err != nil {
+		fmt.Println("failed to VoteSQL")
+		resp.Errno = utils.RECODE_DATAERR
+		return err
+	}
+	// 5. 操作以太坊, 进行投票
+	go eths.VoteTo(address, configs.Config.Eth.FundationPWD, tokenID)
 	return nil
 }

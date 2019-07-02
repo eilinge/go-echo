@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-echo/configs"
+	"go-echo/dbs"
 	"go-echo/utils"
 	"math/big"
 	"os"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum"
 
@@ -18,6 +20,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+// CountStorage ...
+var CountStorage map[int64]*big.Int
 
 // TranDetail ...
 type TranDetail struct {
@@ -220,4 +225,81 @@ func EtherTransfer(from, newAcc string) (string, error) {
 	}
 	fmt.Println("eth_sendTransaction successfully")
 	return transcationHash, err
+}
+
+// VoteTo ...
+func VoteTo(from, pass string, tokenID int64) error {
+	cli, err := ethclient.Dial(configs.Config.Eth.Connstr)
+	if err != nil {
+		fmt.Println("failed to ethclient.Dial", err)
+		return err
+	}
+	instance, err := NewPxa(common.HexToAddress(configs.Config.Eth.PxaAddr), cli)
+	if err != nil {
+		fmt.Println("failed to eths.NewPxa", err)
+		return err
+	}
+	// 设置签名, owner的keyStore文件
+	// 需要获得文件名字
+	fileName, err := utils.GetFileName(string([]rune(from)[2:]), configs.Config.Eth.Keydir)
+
+	file, err := os.Open(configs.Config.Eth.Keydir + "/" + fileName)
+	if err != nil {
+		fmt.Println("failed to os.Open", err)
+		return err
+	}
+	auth, err := bind.NewTransactor(file, pass)
+	if err != nil {
+		fmt.Println("failed to bind.NewTransactor", err)
+		return err
+	}
+	// string -> [32]byte
+	_, err = instance.Vote(auth, big.NewInt(tokenID))
+	if err != nil {
+		fmt.Println("failed to Vote", err)
+		return err
+	}
+	StorageVoteCount()
+
+	fmt.Printf("the account: %s Vote success...\n", from)
+	return nil
+}
+
+// StorageVoteCount ...
+func StorageVoteCount() error {
+	cli, err := ethclient.Dial(configs.Config.Eth.Connstr)
+	if err != nil {
+		fmt.Println("failed to ethclient.Dial", err)
+		return err
+	}
+	instance, err := NewPxa(common.HexToAddress(configs.Config.Eth.PxaAddr), cli)
+	if err != nil {
+		fmt.Println("failed to eths.NewPxa", err)
+		return err
+	}
+	// 查询vote数据库中的token_id 进行遍历
+
+	tokenSQL := fmt.Sprintf("select distinct token_id from vote")
+	tokenIds, num, err := dbs.DBQuery(tokenSQL)
+	CountStorage = make(map[int64]*big.Int)
+	if num > 0 && err == nil {
+		// string -> [32]byte
+		for _, tokenID := range tokenIds {
+			newTokenID, _ := strconv.ParseInt(tokenID["token_id"], 10, 32)
+			newAsset, err := instance.Assets(nil, big.NewInt(newTokenID))
+			if err != nil {
+				fmt.Println("failed to instance.Assets", err)
+				return err
+			}
+			CountStorage[newTokenID] = newAsset.VoteCount
+		}
+	}
+	return err
+}
+
+// ViewVoteCount ...
+func ViewVoteCount() {
+	for k, v := range CountStorage {
+		fmt.Printf("token_id: %d ====Count: %d \n", k, v)
+	}
 }
