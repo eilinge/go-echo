@@ -29,7 +29,7 @@
               <!-- Collect the nav links, forms, and other content for toggling -->
               <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                   <ul class="nav navbar-nav">
-                      <li class="active">
+                      <li>
                           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">认证原创</a>
                           <ul class="dropdown-menu">
                               <li>
@@ -40,7 +40,7 @@
                               </li>
                           </ul>
                       </li>
-                      <li>
+                      <li  class="active">
                           <a href="./balancelist.html">我的资产</a>
                       </li>
                       <li>
@@ -71,6 +71,7 @@
                 <!-- 获取response data, 添加分页 -->
                 <img src="/content/<%=data.contents[i].title%>" alt="">
                 <div>
+                    <b>所剩份额:</b><span><%= data.contents[i].weight %></span>
                     <input type="text" placeholder="份数">
                     <input type="text" placeholder="价格">
                     <a class="account_event" href="javacript:;" data-tokenid="<%=data.contents[i].token_id%>" data-account="<%=data.contents[i].content_hash%>">拍卖</a>

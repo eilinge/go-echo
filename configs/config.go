@@ -36,11 +36,12 @@ type DbConfig struct {
 
 // EthConfig ...
 type EthConfig struct {
-	Connstr   string
-	Keydir    string
-	Fundation string
-	PxcAddr   string
-	PxaAddr   string
+	Connstr      string
+	Keydir       string
+	Fundation    string
+	PxcAddr      string
+	PxaAddr      string
+	FundationPWD string
 }
 
 func usage() {

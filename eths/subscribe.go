@@ -7,6 +7,7 @@ import (
 	"go-echo/dbs"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -40,6 +41,8 @@ a95955c49dbf54a070dc8e8611cbaaca
 00000000000000000000000000000000
 00000000000000000000000000000001
 */
+
+const defaultFormat = "2006-01-02 15:04:05 PM"
 
 // LogDataUnpack ...
 func LogDataUnpack(start, end int, val interface{}, data []byte) (err error) {
@@ -91,7 +94,9 @@ func ParseMintEventDb1(data []byte) error {
 	pixAddr = "0x" + pixAddr
 	fmt.Println("pixAddr===", pixAddr)
 	//插入到数据库中
-	sql := fmt.Sprintf("insert into account_content(content_hash,token_id,address) values('%s',%d,'%s')", pixHash, tokenID, pixAddr)
+	b := []byte(time.Now().Format(defaultFormat))
+	ts := string(b[:len(b)-3])
+	sql := fmt.Sprintf("insert into account_content(content_hash,token_id,address) values('%s',%d,'%s', '%s')", pixHash, tokenID, pixAddr, ts)
 	_, err = dbs.Create(sql)
 	if err != nil {
 		fmt.Println("failed to insert into mysql ", sql, err)
@@ -115,7 +120,7 @@ func ParseMintEventDb(data []byte) error {
 	pixAddr = string(data[32*3-8 : 32*4])
 	pixAddr = "0x" + pixAddr
 	fmt.Println("pixAddr===", pixAddr)
-	//插入到数据库中
+	// 插入到用户资产(account_content)数据库中
 	sql := fmt.Sprintf("insert into account_content(content_hash,token_id,address) values('%s',%d,'%s')", pixHash, tokenID, pixAddr)
 	_, err := dbs.Create(sql)
 	if err != nil {

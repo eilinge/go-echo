@@ -49,5 +49,6 @@ func main() {
 	e.POST("/auction", routes.Auction)                  // 开始拍卖
 	e.GET("/auctions", routes.GetAuctions)              // 查看拍卖
 	e.GET("/auction/bid", routes.JoinBid)               // 参与拍卖
+	e.GET("/content/vote", routes.Vote)                 // 进行投票
 	e.Logger.Fatal(e.Start(configs.Config.Common.Port)) // 启动服务
 }

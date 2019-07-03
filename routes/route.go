@@ -24,6 +24,8 @@ const PageMaxPic = 5
 
 var mutex sync.Mutex
 
+const defaultFormat = "2006-01-02 15:04:05 PM"
+
 // Price ...
 var Price int64
 
@@ -70,7 +72,7 @@ func Register(c echo.Context) error {
 		return err
 	}
 	go func() {
-		err = eths.EthErc20Transfer(configs.Config.Eth.Fundation, "eilinge", address, 5)
+		err = eths.EthErc20Transfer(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, address, 5)
 		if err != nil {
 			fmt.Println("Transfer failed when register err: ", err)
 			return
@@ -232,7 +234,7 @@ func UpLoad(c echo.Context) error {
 
 // GetContents 根据用户查找出其所有资产
 func GetContents(c echo.Context) error {
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 3)
 
 	//1. 响应数据结构初始化
 	var resp utils.Resp
@@ -252,7 +254,7 @@ func GetContents(c echo.Context) error {
 		resp.Errno = utils.RECODE_SESSIONERR
 		return err
 	}
-	sql := fmt.Sprintf("select a.content_hash,a.title,b.token_id from content a, account_content b where a.content_hash = b.content_hash and address='%s'", address)
+	sql := fmt.Sprintf("select a.content_hash,weight,a.title,b.token_id from content a, account_content b where a.content_hash = b.content_hash and address='%s'", address)
 	fmt.Println(sql)
 	contents, num, err := dbs.DBQuery(sql)
 	if err != nil || num <= 0 {
@@ -279,7 +281,7 @@ func GetContent(c echo.Context) error {
 
 	content := &dbs.Content{}
 	content.Title = c.Param("title")
-	fmt.Println("get title: ", content.Title)
+	// fmt.Println("get title: ", content.Title)
 	// 2. 查询数据库获得文件路径
 	sql := fmt.Sprintf("select * from content where title='%s'", content.Title)
 	value, num, err := dbs.DBQuery(sql)
@@ -325,9 +327,11 @@ func Auction(c echo.Context) error {
 		return err
 	}
 	// 4. 插入拍卖(auction)数据库
+	b := []byte(time.Now().Format(defaultFormat))
+	ts := string(b[:len(b)-3])
 	auction.Address = address
-	sql := fmt.Sprintf("insert into auction(content_hash, address, token_id, percent, price, status) value('%s','%s',%d,%d,%d,1)",
-		auction.ContentHash, auction.Address, auction.TokenID, auction.Percent, auction.Price)
+	sql := fmt.Sprintf("insert into auction(content_hash, address, token_id, percent, price, status, ts) value('%s','%s', %d, %d, %d, 1,'%s')",
+		auction.ContentHash, auction.Address, auction.TokenID, auction.Percent, auction.Price, ts)
 	fmt.Println(sql)
 	_, err = dbs.Create(sql)
 	if err != nil {
@@ -339,7 +343,9 @@ func Auction(c echo.Context) error {
 	// 4.5 插入bidwinner数据库
 	Price = auction.Price
 	theWinner := &dbs.BidPerson{Price: auction.Price, Address: auction.Address}
-	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id,price,address) values('%d', '%d','%s');", auction.TokenID, theWinner.Price, theWinner.Address)
+	b1 := []byte(time.Now().Format(defaultFormat))
+	ts1 := string(b1[:len(b1)-3])
+	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id,price,address) values('%d', '%d','%s', '%s');", auction.TokenID, theWinner.Price, theWinner.Address, ts1)
 	fmt.Println("winner: ", WinnerSQL)
 	_, err = dbs.Create(WinnerSQL)
 	if err != nil {
@@ -347,7 +353,7 @@ func Auction(c echo.Context) error {
 		return err
 	}
 	// 5. 开始拍卖执行后, 设置定时器, 时间结束, 自动完成财产的分割/erc20转账
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Minute * 2)
 	go func() {
 		for i := 1; i > 0; i-- {
 			// for {
@@ -383,7 +389,7 @@ func GetAuctions(c echo.Context) error {
 	// 3. 查看拍卖
 	// 自动识别出查询字段所在tables
 	// sql := fmt.Sprintf("select a.*,b.title from auction a, content b where a.content_hash=b.content_hash and a.status=1;")
-	sql := fmt.Sprintf("select a.content_hash,title,b.price,token_id from content a, auction b where a.content_hash=b.content_hash and b.status=1")
+	sql := fmt.Sprintf("select a.content_hash,title,b.price,b.percent,token_id from content a, auction b where a.content_hash=b.content_hash and b.status=1")
 	fmt.Println(sql)
 	values, num, err := dbs.DBQuery(sql)
 	if err != nil || num <= 0 {
@@ -499,14 +505,14 @@ func EndBid(tokenID, weight int64) error {
 	newWeight := bWeight - weight
 	// 拍卖之后的价格 - 拍卖时的价格 + 原本的价格
 	newPrice := (price - _newPriceAuct) + bPrice
-	// content_hash 唯一
+	// content_hash 不唯一(分割出的新资产与旧资产content_hash)
 	UpConSQL := fmt.Sprintf("update content set price='%d' ,weight='%d' where content_hash ='%s';", newPrice, newWeight, contentHash)
 	_, err = dbs.Create(UpConSQL)
 	if err != nil {
 		fmt.Println("failed to update content...", err)
 		return err
 	}
-
+	// 将新资产存储content中 ?
 	bidSQL := fmt.Sprintf("select price,address from auction where token_id = '%d'", tokenID)
 	value, num, err := dbs.DBQuery(bidSQL)
 	if err != nil || num <= 0 {
@@ -517,17 +523,62 @@ func EndBid(tokenID, weight int64) error {
 
 	// 5. 操作以太坊: 资产分割, erc20转账
 	go func() {
-		err = eths.EthSplitAsset(configs.Config.Eth.Fundation, "eilinge", address, tokenID, weight)
+		// 提前判断后面情况的条件, 保证转账成功: 余额 > 参与拍卖的价格
+		balance, err := eths.GetPxcBalance(address)
+		if err != nil || balance < price {
+			fmt.Println("your pxa balance less")
+			return
+		}
+		err = eths.EthSplitAsset(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, address, tokenID, weight)
 		if err != nil {
 			fmt.Println("failed to eths.EthSplitAsset ", err)
 			return
 		}
 		// _price, _ := strconv.ParseInt(price, 10, 32)
-		err = eths.EthErc20Transfer(address, "eilinge", to, (price - _newPriceAuct))
+		err = eths.EthErc20Transfer(address, configs.Config.Eth.FundationPWD, to, price)
 		if err != nil {
 			fmt.Println("failed to eths.EEthErc20Transfer ", err)
 			return
 		}
 	}()
+	return nil
+}
+
+// Vote ...
+func Vote(c echo.Context) error {
+	// 1. 响应数据结构初始化
+	var resp utils.Resp
+	resp.Errno = utils.RECODE_OK
+	defer utils.ResponseData(c, &resp)
+
+	// 2. 获取参数
+	tokenID, _ := strconv.ParseInt(c.QueryParam("token_id"), 10, 32)
+	contentHash := c.QueryParam("contentHash")
+	// 3. session
+	sess, err := session.Get("session", c)
+	if err != nil {
+		fmt.Println("failed to get session")
+		resp.Errno = utils.RECODE_SESSIONERR
+		return err
+	}
+	address, ok := sess.Values["address"].(string)
+	if address == "" || !ok {
+		fmt.Println("failed to get address")
+		resp.Errno = utils.RECODE_SESSIONERR
+		return err
+	}
+	// 4. 存储到数据库
+	b := time.Now().Format(defaultFormat)
+	ts := b[:len(b)-3]
+	VoteSQL := fmt.Sprintf("insert into vote(address, token_id, vote_time, comment) value('%s', '%d', '%s', '%s')", address, tokenID, ts, contentHash)
+	fmt.Println("VoteSQL: ", VoteSQL)
+	_, err = dbs.Create(VoteSQL)
+	if err != nil {
+		fmt.Println("failed to VoteSQL")
+		resp.Errno = utils.RECODE_DATAERR
+		return err
+	}
+	// 5. 操作以太坊, 进行投票, 只能合约内将erc20 token转给tokenID的地址
+	go eths.VoteTo(address, configs.Config.Eth.FundationPWD, tokenID)
 	return nil
 }

@@ -27,12 +27,12 @@
 ### 需要注意的点
 
     1. 竞拍时, 是分布式, 需要最大值时, 需要使用互斥锁
-    2. 拍卖时, 应该以weight所占比重, 计算金额
+    2. 拍卖时, 应该以weight所占比重, 计算金额?
     3. 排行榜, 选出投票的前10名(asset.voteCount), 分配一定erc20(基金会)
     4. 投票之后, 扣除一定的erc20给基金会
-    5. 合约升级之后, 之前相关token/账户被存储到数据库中, 如何将数据存储到新的合约地址中
-    6. 用户刚刚注册进来,　没有ether就无法进行上传图片
-    7. 使用node的express, 进行页面的布局(网页模板)
+    5. 合约升级之后, 之前相关token/账户被存储到数据库中, 如何将数据存储到新的合约地址中?
+    6. 用户刚刚注册进来,　没有ether就无法进行上传图片 -- 必须得用户自己本身拥有ether, 若是使用基金会直接转账, 则会导致多个账号进行注册, 将转出的ether进行买卖
+    7. 使用node的express, 进行页面的布局(网页模板) -- 暂时无法使用(node(:3000)无法远程连接服务地址(http://localhost:8086))
 
 ### issues
 
@@ -45,4 +45,4 @@
 ### 数据库操作
 
     1. create table bidwinner (id int primary key not null auto_increment, token_id int not null unique, price int not null, address varchar(120));
-    2. create table content (content_id int primary key not null auto_increment, title varchar(100), content varchar(256), content_hash varchar(100) unique, price int, weight int,ts timestamp not null;
+    2. create table content (content_id int primary key not null auto_increment, title varchar(100), content varchar(256), content_hash varchar(100), price int, weight int,ts timestamp not null unique;

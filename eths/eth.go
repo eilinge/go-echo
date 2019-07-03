@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-echo/configs"
+	"go-echo/dbs"
 	"go-echo/utils"
 	"math/big"
 	"os"
+	"sort"
+	"strconv"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 
@@ -18,6 +22,19 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
+
+// voteAsset ...
+type voteAsset struct {
+	tokenID int64
+	Count   int64
+}
+
+// Assets ...
+type Assets []voteAsset
+
+func (s Assets) Len() int           { return len(s) }
+func (s Assets) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Assets) Less(i, j int) bool { return s[i].Count > s[j].Count }
 
 // TranDetail ...
 type TranDetail struct {
@@ -220,4 +237,144 @@ func EtherTransfer(from, newAcc string) (string, error) {
 	}
 	fmt.Println("eth_sendTransaction successfully")
 	return transcationHash, err
+}
+
+// VoteTo ...
+func VoteTo(from, pass string, tokenID int64) error {
+	cli, err := ethclient.Dial(configs.Config.Eth.Connstr)
+	if err != nil {
+		fmt.Println("failed to ethclient.Dial", err)
+		return err
+	}
+	instance, err := NewPxa(common.HexToAddress(configs.Config.Eth.PxaAddr), cli)
+	if err != nil {
+		fmt.Println("failed to eths.NewPxa", err)
+		return err
+	}
+	// 设置签名, owner的keyStore文件
+	// 需要获得文件名字
+	fileName, err := utils.GetFileName(string([]rune(from)[2:]), configs.Config.Eth.Keydir)
+
+	file, err := os.Open(configs.Config.Eth.Keydir + "/" + fileName)
+	if err != nil {
+		fmt.Println("failed to os.Open", err)
+		return err
+	}
+	auth, err := bind.NewTransactor(file, pass)
+	if err != nil {
+		fmt.Println("failed to bind.NewTransactor", err)
+		return err
+	}
+	// string -> [32]byte
+	_, err = instance.Vote(auth, big.NewInt(tokenID))
+	if err != nil {
+		fmt.Println("failed to Vote", err)
+		return err
+	}
+	StorageVoteCount()
+
+	fmt.Printf("the account: %s Vote success...\n", from)
+	return nil
+}
+
+// StorageVoteCount ...
+func StorageVoteCount() error {
+	cli, err := ethclient.Dial(configs.Config.Eth.Connstr)
+	if err != nil {
+		fmt.Println("failed to ethclient.Dial", err)
+		return err
+	}
+	instance, err := NewPxa(common.HexToAddress(configs.Config.Eth.PxaAddr), cli)
+	if err != nil {
+		fmt.Println("failed to eths.NewPxa", err)
+		return err
+	}
+	// 查询vote数据库中的token_id 进行遍历
+
+	tokenSQL := fmt.Sprintf("select distinct token_id from vote")
+	tokenIds, num, err := dbs.DBQuery(tokenSQL)
+	var CountStorage Assets
+	if num > 0 && err == nil {
+		// string -> [32]byte
+		for _, tokenID := range tokenIds {
+			newTokenID, _ := strconv.ParseInt(tokenID["token_id"], 10, 32)
+			newAsset, err := instance.Assets(nil, big.NewInt(newTokenID))
+			if err != nil {
+				fmt.Println("failed to instance.Assets", err)
+				return err
+			}
+			CountStorage = append(CountStorage, voteAsset{newTokenID, newAsset.VoteCount.Int64()})
+		}
+	}
+	// 每分钟遍历一次投票列表
+	ticker := time.NewTicker(time.Minute)
+	go func() {
+		for {
+			<-ticker.C
+			CountStorage.ViewVoteCount()
+		}
+	}()
+	// 10分钟之后, 选出前2名, 获取token_id, address, 进行转账erc20, 第一名10, 第二名5
+	tickerClose := time.NewTicker(time.Minute * 10)
+	go func() {
+		for i := 1; i > 0; i-- {
+			<-tickerClose.C
+			newS := CountStorage.ViewVoteCount()
+			// 从auction 和vote中, 找出token_id 对应的address
+			// 第一名newS[0].tokenID
+			firstWinnerSQL := fmt.Sprintf("elect distinct a.address from auction a, vote b where a.token_id= b.token_id and b.token_id='%d'", newS[0].tokenID)
+			firstWinnerAddress, num, err := dbs.DBQuery(firstWinnerSQL)
+			if err != nil || num <= 0 {
+				fmt.Println("failed to dbs.DBQuery(firstWinnerSQL)")
+				return
+			}
+			firstAddress := firstWinnerAddress[0]["address"]
+			err = EthErc20Transfer(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, firstAddress, 10)
+			if err != nil {
+				fmt.Println("failed to EthErc20Transfer")
+				return
+			}
+
+			// 第二名newS[1].tokenID
+			secondWinnerSQL := fmt.Sprintf("elect distinct a.address from auction a, vote b where a.token_id= b.token_id and b.token_id='%d'", newS[1].tokenID)
+			secondWinnerAddress, num, err := dbs.DBQuery(secondWinnerSQL)
+			if err != nil || num <= 0 {
+				fmt.Println("failed to dbs.DBQuery(firstWinnerSQL)")
+				return
+			}
+			secondAddress := secondWinnerAddress[0]["address"]
+			err = EthErc20Transfer(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, secondAddress, 5)
+			if err != nil {
+				fmt.Println("failed to EthErc20Transfer")
+				return
+			}
+
+		}
+	}()
+	return err
+}
+
+// ViewVoteCount ...
+func (s Assets) ViewVoteCount() (newS Assets) {
+	sort.Sort(s)
+	// fmt.Println(s)
+	newS = s[:2]
+	fmt.Println(s[:2])
+	return
+}
+
+// GetPxcBalance ...
+func GetPxcBalance(from string) (int64, error) {
+	cli, err := ethclient.Dial(configs.Config.Eth.Connstr)
+	if err != nil {
+		fmt.Println("failed to ethclient.Dial", err)
+		return -1, err
+	}
+	instance, err := NewPxa(common.HexToAddress(configs.Config.Eth.PxaAddr), cli)
+	if err != nil {
+		fmt.Println("failed to eths.NewPxa", err)
+		return -1, err
+	}
+	balance, _ := instance.GetPXCBalance(nil, common.HexToAddress(from))
+	return balance.Int64(), nil
 }

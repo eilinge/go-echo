@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go-echo/configs"
 	_ "strconv"
-	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -120,7 +119,9 @@ func Create(sql string) (int64, error) {
 // AddContent ...
 func (c *Content) AddContent() error {
 	// ts := time.Now().Format(defaultFormat)
-	ts := strings.Replace(time.Now().Format(defaultFormat), " PM", "", 1)
+	b := []byte(time.Now().Format(defaultFormat))
+	ts := string(b[:len(b)-3])
+	// ts := strings.Replace(time.Now().Format(defaultFormat), " PM", "", 1)
 	sql := fmt.Sprintf("insert into content(title, content, content_hash, price, weight, ts) values('%s', '%s', '%s', '%d', '%d','%s')",
 		c.Title, c.Content, c.ContentHash, c.Price, c.Weight, ts)
 	fmt.Println("insert into content", sql)
