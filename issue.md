@@ -46,3 +46,7 @@
 
     1. create table bidwinner (id int primary key not null auto_increment, token_id int not null unique, price int not null, address varchar(120));
     2. create table content (content_id int primary key not null auto_increment, title varchar(100), content varchar(256), content_hash varchar(100), price int, weight int,ts timestamp not null unique;
+
+### 运行时遇到的问题
+
+    1. 点击竞拍之后, 服务器未响应

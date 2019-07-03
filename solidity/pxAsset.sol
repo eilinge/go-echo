@@ -197,7 +197,7 @@ contract pxAsset is ERC721 {
         require(_tokenId < assets.length);
         Asset storage a = assets[_tokenId];
         a.voteCount = a.voteCount.add(1);
-        pxcoin.transfer(_tokenOwner[_tokenId], 10);
+        pxcoin.transfer(_tokenOwner[_tokenId], 30);
     }
     
     function getPXCBalance(address _owner) view public returns(uint256) {

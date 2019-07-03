@@ -58,7 +58,8 @@ create table bidwinner
    id                   int primary key not null auto_increment, 
    token_id             int not null unique, 
    price                int not null, 
-   address              varchar(120)
+   address              varchar(120),
+   ts                   timestamp
 );
 
 -- 记录投票信息

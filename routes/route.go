@@ -50,7 +50,7 @@ func Register(c echo.Context) error {
 	defer utils.ResponseData(c, &resp)
 	//2. 解析数据
 	account := &dbs.Accounts{}
-	fmt.Println("start prase pragma...")
+
 	/*
 		将前端传过来的数据, 与dbs.Accounts进行数据绑定
 		&dbs.Account{
@@ -110,7 +110,7 @@ func Login(c echo.Context) error {
 	defer utils.ResponseData(c, &resp)
 	//2. 解析数据
 	account := &dbs.Accounts{}
-	fmt.Println("start prase pragma...")
+
 	if err := c.Bind(account); err != nil { // 解析form表单
 		resp.Errno = utils.RECODE_PARAMERR
 		return err
@@ -248,7 +248,6 @@ func GetContents(c echo.Context) error {
 		return err
 	}
 	address := sess.Values["address"]
-	// username := sess.Values["username"]
 	if address == nil {
 		fmt.Println("failed to get address")
 		resp.Errno = utils.RECODE_SESSIONERR
@@ -317,6 +316,7 @@ func Auction(c echo.Context) error {
 
 	// 3. 解析参数
 	auction := &dbs.Auction{}
+	fmt.Printf("start parse from ......................")
 	if err := c.Bind(auction); err != nil { // 解析form表单, string -> int64
 		resp.Errno = utils.RECODE_PARAMERR
 		return err
@@ -345,13 +345,15 @@ func Auction(c echo.Context) error {
 	theWinner := &dbs.BidPerson{Price: auction.Price, Address: auction.Address}
 	b1 := []byte(time.Now().Format(defaultFormat))
 	ts1 := string(b1[:len(b1)-3])
-	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id,price,address) values('%d', '%d','%s', '%s');", auction.TokenID, theWinner.Price, theWinner.Address, ts1)
+	WinnerSQL := fmt.Sprintf("insert into bidwinner(token_id, price, address, ts) values('%d', '%d','%s', '%s');", auction.TokenID, theWinner.Price, theWinner.Address, ts1)
 	fmt.Println("winner: ", WinnerSQL)
 	_, err = dbs.Create(WinnerSQL)
 	if err != nil {
 		resp.Errno = utils.RECODE_DBERR
 		return err
 	}
+	fmt.Println("--------------------------------------")
+	fmt.Println("start bid, this asset 2 minute over")
 	// 5. 开始拍卖执行后, 设置定时器, 时间结束, 自动完成财产的分割/erc20转账
 	ticker := time.NewTicker(time.Minute * 2)
 	go func() {
@@ -366,7 +368,7 @@ func Auction(c echo.Context) error {
 
 // GetAuctions ...
 func GetAuctions(c echo.Context) error {
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Second)
 	// 1. 响应数据结构初始化
 	var resp utils.Resp
 	resp.Errno = utils.RECODE_OK
@@ -435,6 +437,7 @@ func JoinBid(c echo.Context) error {
 
 	// 从bidwinner中取出当前最大的price, 然后进行比较
 	maxSQL := fmt.Sprintf("select price from bidwinner where token_id='%d'", _tokenid)
+	fmt.Println(maxSQL)
 	value, num, err := dbs.DBQuery(maxSQL)
 	if err != nil || num <= 0 {
 		resp.Errno = utils.RECODE_DBERR
@@ -512,7 +515,7 @@ func EndBid(tokenID, weight int64) error {
 		fmt.Println("failed to update content...", err)
 		return err
 	}
-	// 将新资产存储content中 ?
+	// 获取token_id最高竞拍者的price
 	bidSQL := fmt.Sprintf("select price,address from auction where token_id = '%d'", tokenID)
 	value, num, err := dbs.DBQuery(bidSQL)
 	if err != nil || num <= 0 {
@@ -521,6 +524,8 @@ func EndBid(tokenID, weight int64) error {
 	}
 	to := value[0]["address"]
 
+	fmt.Println("---------------------------------------")
+	fmt.Println("aleady EndBid, Waiting SpiltAsset and transfer .....")
 	// 5. 操作以太坊: 资产分割, erc20转账
 	go func() {
 		// 提前判断后面情况的条件, 保证转账成功: 余额 > 参与拍卖的价格
@@ -540,6 +545,8 @@ func EndBid(tokenID, weight int64) error {
 			fmt.Println("failed to eths.EEthErc20Transfer ", err)
 			return
 		}
+		fmt.Println("---------------------------------------")
+		fmt.Println("Success SpiltAsset and transfer .....")
 	}()
 	return nil
 }
@@ -567,6 +574,12 @@ func Vote(c echo.Context) error {
 		resp.Errno = utils.RECODE_SESSIONERR
 		return err
 	}
+	// 3.5 获取该address响应erc20 余额, 保证其有足够(>=30)的token进行该次投票
+	erc20Balance, _ := eths.GetPxcBalance(address)
+	if erc20Balance < 30 || err != nil {
+		fmt.Println("your erc20 balance is poor, connot operate this vote")
+		return err
+	}
 	// 4. 存储到数据库
 	b := time.Now().Format(defaultFormat)
 	ts := b[:len(b)-3]
@@ -579,6 +592,6 @@ func Vote(c echo.Context) error {
 		return err
 	}
 	// 5. 操作以太坊, 进行投票, 只能合约内将erc20 token转给tokenID的地址
-	go eths.VoteTo(address, configs.Config.Eth.FundationPWD, tokenID)
+	eths.VoteTo(address, configs.Config.Eth.FundationPWD, tokenID)
 	return nil
 }
