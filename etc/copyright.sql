@@ -81,3 +81,4 @@ delete from aution;
 delete from account_content;
 delete from content;
 delete from account;
+delete from bidwinner;

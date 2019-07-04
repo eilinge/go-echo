@@ -21,12 +21,12 @@ contract pxCoin is ERC20 {
         _balance[assuer] = totalSupply * 80 / 100;
     }
     
-    function totalSupply() view public returns (uint totalsupply) { // 获取总的发行量
+    function totalSupply() public view returns (uint totalsupply) { // 获取总的发行量
         totalsupply = _totalSupply;
         return;
     }
 
-    function balanceOf(address _owner) view public returns (uint balance){ // 查询账户余额
+    function balanceOf(address _owner) public view returns (uint balance){ // 查询账户余额
         balance = _balance[_owner];
         return;
     }
@@ -63,12 +63,12 @@ contract pxCoin is ERC20 {
         }
     }
     
-    function allowance(address _owner, address _spender) view public returns (uint remaining) { // 询允许spender转移的Token数量
+    function allowance(address _owner, address _spender) public view returns (uint remaining) { // 询允许spender转移的Token数量
         remaining = _allowance[_owner][_spender];
         return;
     }
     
-    function getAddress() view public returns(address) {
+    function getAddress() public view returns(address) {
         return address(this);
     }
     

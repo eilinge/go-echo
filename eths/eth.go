@@ -35,8 +35,10 @@ type Assets []voteAsset
 // CountStorage ...
 var (
 	CountStorage Assets
-	res          = make(chan interface{}, 10000)
-	timeout      = time.After(10 * 10 * time.Second)
+	timeout      = time.After(10 * 2 * time.Second)
+	ticker       = time.NewTicker(time.Second * 10)
+	i            = 0
+	AwardEnd     bool
 )
 
 func (s Assets) Len() int           { return len(s) }
@@ -169,7 +171,6 @@ func EthSplitAsset(fundation, pass, buyer string, tokenID, weight int64) error {
 	}
 	// string -> [32]byte
 	// SplitAsset(opts *bind.TransactOpts, _tokenId *big.Int, _weight *big.Int, _buyer common.Address)
-	// fmt.Printf("tokenID: %d, weight: %d, buyer:%v auth:%v\n", big.NewInt(tokenID), big.NewInt(weight), buyer, fundation)
 
 	// 分割新的资产, 添加事件, 将新的资产存储content文本中
 	_, err = instance.SplitAsset(auth, big.NewInt(tokenID), big.NewInt(weight), common.HexToAddress(buyer))
@@ -179,7 +180,7 @@ func EthSplitAsset(fundation, pass, buyer string, tokenID, weight int64) error {
 		return err
 	}
 	fmt.Printf("the account: %s SplitAsset to buyer: %s success...\n", fundation, buyer)
-	// 将新的资产存入数据库中, 获取新的asset, token_id = asset.length-1
+
 	return nil
 }
 
@@ -197,12 +198,14 @@ func EthErc20Transfer(from, pass, seller string, num int64) error {
 	}
 	// 设置签名, owner的keyStore文件
 	// 需要获得文件名字
+
 	fileName, err := utils.GetFileName(string([]rune(from)[2:]), configs.Config.Eth.Keydir)
 	file, err := os.Open(configs.Config.Eth.Keydir + "/" + fileName)
 	if err != nil {
 		fmt.Println("failed to os.Open", err)
 		return err
 	}
+
 	auth, err := bind.NewTransactor(file, pass)
 	if err != nil {
 		fmt.Println("failed to bind.NewTransactor", err)
@@ -215,7 +218,7 @@ func EthErc20Transfer(from, pass, seller string, num int64) error {
 		fmt.Println("failed to Transfer", err)
 		return err
 	}
-	fmt.Printf("Transfer %d to account: %s success...\n", num, from)
+	fmt.Printf("Transfer %d to account: %s success...\n", num, seller)
 	return nil
 }
 
@@ -273,7 +276,7 @@ func VoteTo(from, pass string, tokenID int64) error {
 		return err
 	}
 	// string -> [32]byte
-	// 投票成功, 并且向该作品作者, 送出30 erc20(链上直接转出erc20)
+	// 投票成功, 并且向基金会, 转出30 erc20(链上直接转出erc20)
 	_, err = instance.Vote(auth, big.NewInt(tokenID))
 	if err != nil {
 		fmt.Println("failed to Vote", err)
@@ -282,7 +285,7 @@ func VoteTo(from, pass string, tokenID int64) error {
 
 	StorageVoteCount()
 
-	fmt.Printf("the account: %s Vote success, and transfer 30 erc20 to author as gift\n", from)
+	fmt.Printf("the account: %s Vote success, and transfer 30 erc20 to fundation\n", from)
 	return nil
 }
 
@@ -315,7 +318,12 @@ func StorageVoteCount() error {
 			CountStorage = append(CountStorage, voteAsset{newTokenID, newAsset.VoteCount.Int64()})
 
 		}
-		fmt.Println("CountStorage success.....", CountStorage)
+		// fmt.Println("CountStorage success.....", CountStorage)
+		if len(CountStorage) >= 3 {
+			fmt.Println("CountStorage is not nil, start refresh award......")
+			CountStorage.Award(timeout)
+		}
+
 	}
 
 	return err
@@ -325,7 +333,7 @@ func StorageVoteCount() error {
 func (s Assets) ViewVoteCount() (newS Assets) {
 	sort.Sort(s)
 	// fmt.Println(s)
-	newS = s[:2]
+	newS = s[:3]
 	fmt.Println(newS)
 	return
 }
@@ -346,27 +354,9 @@ func GetPxcBalance(from string) (int64, error) {
 	return balance.Int64(), nil
 }
 
-// RefreshPlace
-func RefreshPlace() {
-	if len(CountStorage) >= 2 {
-		fmt.Println("CountStorage is not nil, start refresh award......")
-		go CountStorage.Award(res, timeout)
-		for v := range res {
-			fmt.Println(v)
-		}
-	}
-}
-
 // Award ...
-func (s *Assets) Award(res chan interface{}, timeout <-chan time.Time) {
-	fmt.Println("Award start .....")
-	fmt.Println("---------------------------------------------")
-	ticker := time.NewTicker(time.Second * 10)
-	done := make(chan bool, 1)
-
+func (s *Assets) Award(timeout <-chan time.Time) {
 	go func() {
-		defer close(res)
-		i := 0
 		for {
 			select {
 			// 每分钟遍历一次投票列表
@@ -375,70 +365,44 @@ func (s *Assets) Award(res chan interface{}, timeout <-chan time.Time) {
 				fmt.Println("---------------------------------------------")
 				fmt.Println("watch ranking ................", i)
 				s.ViewVoteCount()
-				res <- i
 				i++
-			// 10分钟之后, 选出前2名, 获取token_id, address, 进行转账erc20, 第一名100, 第二名50
+			// 10分钟之后, 选出前3名, 获取token_id, address, 进行转账erc20, 第一名1000, 第二名500
 			// 使用集合, 将每一位作品与相应奖品金额绑定
 			case <-timeout:
+				fmt.Println("Award start .....")
+				fmt.Println("---------------------------------------------")
+				if AwardEnd {
+					fmt.Println("award end ......")
+					fmt.Println("=====================================")
+					break
+				}
 				newS := s.ViewVoteCount()
 				// 从auction 和vote中, 找出token_id 对应的address
 				// 第一名newS[0].tokenID
-				firstWinnerSQL := fmt.Sprintf("select distinct a.address from auction a, vote b where a.token_id= b.token_id and b.token_id='%d'", newS[0].tokenID)
-				firstWinnerAddress, num, err := dbs.DBQuery(firstWinnerSQL)
-				if err != nil || num <= 0 {
-					fmt.Println("failed to dbs.DBQuery(firstWinnerSQL)")
-					return
-				}
-				firstAddress := firstWinnerAddress[0]["address"]
-				err = EthErc20Transfer(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, firstAddress, 10)
-				if err != nil {
-					fmt.Println("failed to EthErc20Transfer")
-					return
-				}
 
-				// 第二名newS[1].tokenID
-				secondWinnerSQL := fmt.Sprintf("select distinct a.address from auction a, vote b where a.token_id= b.token_id and b.token_id='%d'", newS[1].tokenID)
-				secondWinnerAddress, num, err := dbs.DBQuery(secondWinnerSQL)
-				if err != nil || num <= 0 {
-					fmt.Println("failed to dbs.DBQuery(firstWinnerSQL)")
-					return
+				var ws = make(map[int64]int64)
+				ws[newS[0].tokenID] = 1000
+				ws[newS[1].tokenID] = 500
+				ws[newS[2].tokenID] = 300
+
+				for k, v := range ws {
+					WinnerSQL := fmt.Sprintf("select distinct a.address from auction a, vote b where a.token_id= b.token_id and b.token_id='%d'", k)
+					WinnerAddress, num, err := dbs.DBQuery(WinnerSQL)
+					if err != nil || num <= 0 {
+						fmt.Println("failed to dbs.DBQuery(WinnerSQL)")
+						return
+					}
+					Address := WinnerAddress[0]["address"]
+					err = EthErc20Transfer(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, Address, v)
+					if err != nil {
+						fmt.Println("failed to EthErc20Transfer")
+						return
+					}
 				}
-				secondAddress := secondWinnerAddress[0]["address"]
-				err = EthErc20Transfer(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, secondAddress, 5)
-				if err != nil {
-					fmt.Println("failed to EthErc20Transfer")
-					return
-				}
+				AwardEnd = true
 				fmt.Println("---------------------------------------------")
-				fmt.Println("success transfer erc20 to First, second place")
-				close(done)
-				return
 			}
 		}
 	}()
-	<-done
-	return
-}
-
-// DoTickerWork ...
-func DoTickerWork(res chan interface{}, timeout <-chan time.Time) {
-	t := time.NewTicker(3 * time.Second)
-	done := make(chan bool, 1)
-	go func() {
-		defer close(res)
-		i := 1
-		for {
-			select {
-			case <-t.C:
-				fmt.Printf("start %d th worker\n", i)
-				res <- i
-				i++
-			case <-timeout:
-				close(done)
-				return
-			}
-		}
-	}()
-	<-done
 	return
 }

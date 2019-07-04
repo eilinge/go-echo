@@ -47,43 +47,43 @@ contract pxAsset is ERC721 {
     }
     
     function balanceOf(address _owner) external view returns (uint256){
-        require( address(0) != _owner);
+        require(address(0) != _owner);
         return _ownerTokenCount[_owner];
     }
     
     function ownerOf(uint256 _tokenId) external view returns (address) {
         address tokenOwn = _tokenOwner[_tokenId];
-        require( address(0) != tokenOwn);
+        require(address(0) != tokenOwn);
         return tokenOwn;
     }
     
     modifier canTransfer(uint _tokenid) {
         address tokenOwner = _tokenOwner[_tokenid];
-        require( msg.sender == tokenOwner || 
+        require(msg.sender == tokenOwner || 
                  msg.sender == _getApproved(_tokenid) ||
                  _operatorApprovals[tokenOwner][msg.sender]);
         _;
     }
     modifier canOperate(uint _tokenid) {
         address tokenOwner = _tokenOwner[_tokenid];
-        require( msg.sender == tokenOwner || _operatorApprovals[tokenOwner][msg.sender]);
+        require(msg.sender == tokenOwner || _operatorApprovals[tokenOwner][msg.sender]);
         _;
     }
     modifier onlyOwner() {
-        require( fundation == msg.sender);
+        require(fundation == msg.sender);
         _;
     }
     modifier validToken( uint _tokenId) {
         address owner = _tokenOwner[_tokenId];
-        require( owner != address(0) );
+        require(owner != address(0) );
         _;
     }
     function _safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes _data) canTransfer(_tokenId) validToken(_tokenId) private {
-        require( _to != address(0));
+        require(_to != address(0));
         _transfer(_from, _to, _tokenId);
-        if (_to.isContract()) { // ?
+        if (_to.isContract()) {
             bytes4 retval = ERC721TokenReceiver(_to).onERC721Received(msg.sender, _from, _tokenId, _data);
-            require( retval == MAGIC_ON_ERC721_RECEIVED);
+            require(retval == MAGIC_ON_ERC721_RECEIVED);
         }
     }
 
@@ -108,7 +108,7 @@ contract pxAsset is ERC721 {
     }
     
     function addToken(address _to, uint256 _tokenId) private {
-        require( _tokenOwner[_tokenId] == address(0));
+        require(_tokenOwner[_tokenId] == address(0));
         _tokenOwner[_tokenId] = _to;
         _ownerTokenCount[_to]++;
     }
@@ -123,25 +123,25 @@ contract pxAsset is ERC721 {
         addToken(_to, _tokenId);
         emit Transfer(owner, _to, _tokenId);
     }
-    function transferFrom(address _from, address _to, uint256 _tokenId) canTransfer(_tokenId) validToken(_tokenId) external payable { // _from ?
+    function transferFrom(address _from, address _to, uint256 _tokenId) canTransfer(_tokenId) validToken(_tokenId) external payable {
         // address owner = _tokenOwner[_tokenId];
-        require( _to != address(0));
+        require(_to != address(0));
         _transfer(_from, _to, _tokenId);
     }
     function approve(address _approved, uint256 _tokenId) canOperate(_tokenId) validToken(_tokenId) external payable {
         // address tokenOwner = _tokenOwner[_tokenId];
-        require( _approved != address(0));
+        require(_approved != address(0));
         _tokenApprovals[_tokenId] = _approved;
     }
     function setApprovalForAll(address _operator, bool _approved) external {
-        require( _operator != address(0));
-        require( _ownerTokenCount[msg.sender] > 0);
+        require(_operator != address(0));
+        require(_ownerTokenCount[msg.sender] > 0);
         _operatorApprovals[msg.sender][_operator] = _approved;
     }
     function getApproved(uint256 _tokenId) external view returns (address) {
         return _getApproved(_tokenId);
     }
-    function _getApproved(uint256 _tokenId) canOperate(_tokenId) private view returns (address) {
+    function _getApproved(uint256 _tokenId) private canOperate(_tokenId) view returns (address) {
         return _tokenApprovals[_tokenId];
     }
     function isApprovedForAll(address _owner, address _operator) external view returns (bool) {
@@ -165,7 +165,7 @@ contract pxAsset is ERC721 {
     }
     
     function _approveAsset(address _approved, uint256 _tokenId) canOperate(_tokenId) validToken(_tokenId) private {
-        require( _approved != address(0));
+        require(_approved != address(0));
         _tokenApprovals[_tokenId] = _approved;
     }
 
@@ -176,9 +176,9 @@ contract pxAsset is ERC721 {
         pxcoin.transferFrom(_from, _to, _price);
     }
     
-    function splitAsset(uint _tokenId, uint _weight, address _buyer) onlyOwner() public returns(uint) {
+    function splitAsset(uint _tokenId, uint _weight, address _buyer) public onlyOwner()  returns(uint) {
         require(_weight <= 100);
-        require( address(0) != _buyer);
+        require(address(0) != _buyer);
         Asset storage a = assets[_tokenId];
         require(a.weight >= _weight);
         
@@ -197,7 +197,12 @@ contract pxAsset is ERC721 {
         require(_tokenId < assets.length);
         Asset storage a = assets[_tokenId];
         a.voteCount = a.voteCount.add(1);
-        pxcoin.transfer(_tokenOwner[_tokenId], 30);
+        pxcoin.transfer(fundation, 30);
+    }
+    
+    
+    function lengthAsset() public view returns(uint){
+        return assets.length;
     }
     
     function getPXCBalance(address _owner) view public returns(uint256) {
@@ -209,7 +214,7 @@ contract pxAsset is ERC721 {
     }
     
     function getOwnerToken(address _owner) public view returns(uint[]) {
-        require( address(_owner) != 0);
+        require(address(_owner) != 0);
         return _ownerToken[_owner];
     }
 }
