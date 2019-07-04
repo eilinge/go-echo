@@ -318,15 +318,6 @@ func StorageVoteCount() error {
 		fmt.Println("CountStorage success.....", CountStorage)
 	}
 
-	// 每投一次票, 就重新开始计时?
-	if len(CountStorage) != 0 {
-		fmt.Println("CountStorage is not nil, start refresh award......")
-		go CountStorage.Award(res, timeout)
-		for v := range res {
-			fmt.Println(v)
-		}
-	}
-
 	return err
 }
 
@@ -353,6 +344,17 @@ func GetPxcBalance(from string) (int64, error) {
 	}
 	balance, _ := instance.GetPXCBalance(nil, common.HexToAddress(from))
 	return balance.Int64(), nil
+}
+
+// RefreshPlace
+func RefreshPlace() {
+	if len(CountStorage) >= 2 {
+		fmt.Println("CountStorage is not nil, start refresh award......")
+		go CountStorage.Award(res, timeout)
+		for v := range res {
+			fmt.Println(v)
+		}
+	}
 }
 
 // Award ...

@@ -127,6 +127,8 @@
                         success: function (data) {
                             if (data.errno == 0) {
                                 alert("竞拍成功");
+                            } else {
+                                alert(data.errmsg)
                             }
                         }
                     })
@@ -150,6 +152,8 @@
                         success: function (data) {
                             if (data.errno == 0) {
                                 alert("投票成功");
+                            } else {
+                                alert(data.errmsg)
                             }
                         }
                     })

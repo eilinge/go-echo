@@ -89,9 +89,10 @@
                 // autoLoad: true,
                 // }
                 done: function (e, data) {
-                    console.log(data);
+                    console.log(data._response.result);
                     if (data._response.result.errno == 0) {
                         window.location.href = "./balancelist.html";
+                        // window.location.href = "#";
                     } else {
                         alert(data._response.result.errmsg);
                     }

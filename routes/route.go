@@ -20,14 +20,17 @@ import (
 )
 
 // PageMaxPic ...
-const PageMaxPic = 5
-
-var mutex sync.Mutex
-
-const defaultFormat = "2006-01-02 15:04:05 PM"
+const (
+	PageMaxPic    = 5
+	defaultFormat = "2006-01-02 15:04:05 PM"
+)
 
 // Price ...
-var Price int64
+var (
+	Price  int64
+	mutex  sync.Mutex
+	endBid bool
+)
 
 // PingHandler ...
 func PingHandler(c echo.Context) error {
@@ -115,7 +118,7 @@ func Login(c echo.Context) error {
 		resp.Errno = utils.RECODE_PARAMERR
 		return err
 	}
-	fmt.Println("account.IdentitiyID: ", account.UserName, account.IdentitiyID)
+	// fmt.Println("account.IdentitiyID: ", account.UserName, account.IdentitiyID)
 	passwd = account.IdentitiyID
 
 	//3. 操作Mysql查询数据
@@ -220,15 +223,16 @@ func UpLoad(c echo.Context) error {
 		return errors.New("no session")
 	}
 	// from, pass, hash, data string
-	fmt.Printf("price: %d, weight: %d\n", price, weight)
-	go func() {
-		err = eths.Upload(fromAddr, passwd, content.ContentHash, content.Title, price, weight)
-		if err != nil {
-			resp.Errno = utils.RECODE_IPCERR
-			return
-		}
-		content.AddContent()
-	}()
+	// fmt.Printf("price: %d, weight: %d\n", price, weight)
+	// go func() {
+	// 使用go func开启协程, 则当挖矿失败, 无法返回resp.Errno
+	err = eths.Upload(fromAddr, passwd, content.ContentHash, content.Title, price, weight)
+	if err != nil {
+		resp.Errno = utils.RECODE_MINTERR
+		return err
+	}
+	content.AddContent()
+	// }()
 	return nil
 }
 
@@ -354,13 +358,13 @@ func Auction(c echo.Context) error {
 	}
 	fmt.Println("--------------------------------------")
 	fmt.Println("start bid, this asset 2 minute over")
-	// 5. 开始拍卖执行后, 设置定时器, 时间结束, 自动完成财产的分割/erc20转账
+	// 5. 开始拍卖执行后, 设置定时器, 2分钟后, 时间结束, 自动完成财产的分割/erc20转账
 	ticker := time.NewTicker(time.Minute * 2)
 	go func() {
 		for i := 1; i > 0; i-- {
 			// for {
 			<-ticker.C
-			EndBid(auction.TokenID, auction.Percent)
+			EndBid(auction.TokenID, auction.Percent, resp)
 		}
 	}()
 	return nil
@@ -431,13 +435,26 @@ func JoinBid(c echo.Context) error {
 		resp.Errno = utils.RECODE_SESSIONERR
 		return err
 	}
+	if endBid {
+		fmt.Printf("this bid is  end: %s\n", tokenID)
+		resp.Errno = utils.RECODE_DBERR
+		return err
+	}
 	// 进行比较竞拍值, 保存该address
 	_price, _ := strconv.ParseInt(price, 10, 64)
 	_tokenid, _ := strconv.ParseInt(tokenID, 10, 64)
 
+	// 3.5 获取该address响应erc20 余额, 保证其有足够(>=30)的token进行该次投票
+	erc20Balance, _ := eths.GetPxcBalance(address)
+	if erc20Balance < _price || err != nil {
+		fmt.Printf("%s: your erc20 balance is poor, connot operate this vote\n", address)
+		resp.Errno = utils.RECODE_ERC20POORERR
+		return err
+	}
+
 	// 从bidwinner中取出当前最大的price, 然后进行比较
 	maxSQL := fmt.Sprintf("select price from bidwinner where token_id='%d'", _tokenid)
-	fmt.Println(maxSQL)
+	// fmt.Println(maxSQL)
 	value, num, err := dbs.DBQuery(maxSQL)
 	if err != nil || num <= 0 {
 		resp.Errno = utils.RECODE_DBERR
@@ -449,7 +466,7 @@ func JoinBid(c echo.Context) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	fmt.Printf("the price: %d and Price: %d\n", _price, Price)
+	// fmt.Printf("the price: %d and Price: %d\n", _price, Price)
 	if _price > Price {
 		Price = _price
 		theWinner := &dbs.BidPerson{Price: _price, Address: address}
@@ -462,11 +479,12 @@ func JoinBid(c echo.Context) error {
 		}
 		fmt.Printf("the account: %s Join bid success ...", address)
 	}
+	resp.Errno = utils.RECODE_DATAERR
 	return nil
 }
 
 // EndBid ...
-func EndBid(tokenID, weight int64) error {
+func EndBid(tokenID, weight int64, resp utils.Resp) error {
 	// 3.5 根据tokenId, 查询出最高价者的address, price
 	WinSQL := fmt.Sprintf("select token_id,price,address from bidwinner where token_id='%d'", tokenID)
 	winDetail, num, err := dbs.DBQuery(WinSQL)
@@ -516,7 +534,7 @@ func EndBid(tokenID, weight int64) error {
 		return err
 	}
 	// 获取token_id最高竞拍者的price
-	bidSQL := fmt.Sprintf("select price,address from auction where token_id = '%d'", tokenID)
+	bidSQL := fmt.Sprintf("select b.price,b.address from auction a, bidwinner b where a.address <> b.address and b.token_id='%d' and a.status=1;", tokenID)
 	value, num, err := dbs.DBQuery(bidSQL)
 	if err != nil || num <= 0 {
 		fmt.Println("failed to bidSQL...", err)
@@ -531,22 +549,26 @@ func EndBid(tokenID, weight int64) error {
 		// 提前判断后面情况的条件, 保证转账成功: 余额 > 参与拍卖的价格
 		balance, err := eths.GetPxcBalance(address)
 		if err != nil || balance < price {
+			resp.Errno = utils.RECODE_ERC20POORERR
 			fmt.Println("your pxa balance less")
 			return
 		}
 		err = eths.EthSplitAsset(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, address, tokenID, weight)
 		if err != nil {
+			resp.Errno = utils.RECODE_MINTERR
 			fmt.Println("failed to eths.EthSplitAsset ", err)
 			return
 		}
 		// _price, _ := strconv.ParseInt(price, 10, 32)
 		err = eths.EthErc20Transfer(address, configs.Config.Eth.FundationPWD, to, price)
 		if err != nil {
+			resp.Errno = utils.RECODE_ERC20ERR
 			fmt.Println("failed to eths.EEthErc20Transfer ", err)
 			return
 		}
 		fmt.Println("---------------------------------------")
 		fmt.Println("Success SpiltAsset and transfer .....")
+		endBid = true
 	}()
 	return nil
 }
@@ -577,7 +599,8 @@ func Vote(c echo.Context) error {
 	// 3.5 获取该address响应erc20 余额, 保证其有足够(>=30)的token进行该次投票
 	erc20Balance, _ := eths.GetPxcBalance(address)
 	if erc20Balance < 30 || err != nil {
-		fmt.Println("your erc20 balance is poor, connot operate this vote")
+		fmt.Printf("%s: your erc20 balance is poor, connot operate this vote\n", address)
+		resp.Errno = utils.RECODE_ERC20POORERR
 		return err
 	}
 	// 4. 存储到数据库

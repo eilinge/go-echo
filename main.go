@@ -37,7 +37,7 @@ func main() {
 		Level: 5,
 	}))
 	go eths.EventSubscribe("ws://localhost:8546", configs.Config.Eth.PxaAddr)
-
+	go eths.RefreshPlace()
 	staticFile(e) // 静态文件处理调用
 
 	e.GET("/ping", routes.PingHandler)                  // 路由测试函数
