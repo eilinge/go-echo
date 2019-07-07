@@ -35,7 +35,7 @@ type Assets []voteAsset
 // CountStorage ...
 var (
 	CountStorage Assets
-	timeout      = time.After(10 * 2 * time.Second)
+	timeout      = time.After(10 * 10 * time.Second)
 	ticker       = time.NewTicker(time.Second * 10)
 	i            = 0
 	AwardEnd     bool
@@ -276,16 +276,16 @@ func VoteTo(from, pass string, tokenID int64) error {
 		return err
 	}
 	// string -> [32]byte
-	// 投票成功, 并且向基金会, 转出30 erc20(链上直接转出erc20)
 	_, err = instance.Vote(auth, big.NewInt(tokenID))
 	if err != nil {
 		fmt.Println("failed to Vote", err)
 		return err
 	}
+	// 投票成功之后, 转30 erc20, 给基金会
+	go EthErc20Transfer(from, configs.Config.Eth.FundationPWD, configs.Config.Eth.Fundation, 30)
+	fmt.Printf("the account: %s Vote success, and transfer 30 erc20 to fundation\n", from)
 
 	StorageVoteCount()
-
-	fmt.Printf("the account: %s Vote success, and transfer 30 erc20 to fundation\n", from)
 	return nil
 }
 
@@ -318,8 +318,7 @@ func StorageVoteCount() error {
 			CountStorage = append(CountStorage, voteAsset{newTokenID, newAsset.VoteCount.Int64()})
 
 		}
-		// fmt.Println("CountStorage success.....", CountStorage)
-		if len(CountStorage) >= 3 {
+		if len(CountStorage) >= 2 {
 			fmt.Println("CountStorage is not nil, start refresh award......")
 			CountStorage.Award(timeout)
 		}
@@ -333,7 +332,7 @@ func StorageVoteCount() error {
 func (s Assets) ViewVoteCount() (newS Assets) {
 	sort.Sort(s)
 	// fmt.Println(s)
-	newS = s[:3]
+	newS = s[:2]
 	fmt.Println(newS)
 	return
 }
@@ -383,7 +382,7 @@ func (s *Assets) Award(timeout <-chan time.Time) {
 				var ws = make(map[int64]int64)
 				ws[newS[0].tokenID] = 1000
 				ws[newS[1].tokenID] = 500
-				ws[newS[2].tokenID] = 300
+				// ws[newS[2].tokenID] = 300
 
 				for k, v := range ws {
 					WinnerSQL := fmt.Sprintf("select distinct a.address from auction a, vote b where a.token_id= b.token_id and b.token_id='%d'", k)
@@ -404,5 +403,4 @@ func (s *Assets) Award(timeout <-chan time.Time) {
 			}
 		}
 	}()
-	return
 }

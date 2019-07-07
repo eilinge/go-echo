@@ -8,6 +8,7 @@ import (
 	"go-echo/dbs"
 	"go-echo/eths"
 	"go-echo/utils"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,7 +22,7 @@ import (
 
 // PageMaxPic ...
 const (
-	PageMaxPic    = 5
+	PageMaxPic    = 3
 	defaultFormat = "2006-01-02 15:04:05 PM"
 )
 
@@ -357,9 +358,9 @@ func Auction(c echo.Context) error {
 		return err
 	}
 	fmt.Println("--------------------------------------")
-	fmt.Println("start bid, this asset 2 minute over")
-	// 5. 开始拍卖执行后, 设置定时器, 2分钟后, 时间结束, 自动完成财产的分割/erc20转账
-	ticker := time.NewTicker(time.Minute * 2)
+	fmt.Println("start bid, this asset 3 minute over")
+	// 5. 开始拍卖执行后, 设置定时器, 3分钟后, 时间结束, 自动完成财产的分割/erc20转账
+	ticker := time.NewTicker(time.Minute * 3)
 	go func() {
 		for i := 1; i > 0; i-- {
 			// for {
@@ -471,15 +472,17 @@ func JoinBid(c echo.Context) error {
 		Price = _price
 		theWinner := &dbs.BidPerson{Price: _price, Address: address}
 		sql := fmt.Sprintf("update bidwinner set price = '%d', address ='%s' where token_id='%d';", theWinner.Price, theWinner.Address, _tokenid)
-		fmt.Println("update bidwinner: ", sql)
 		_, err := dbs.Create(sql)
 		if err != nil {
 			resp.Errno = utils.RECODE_DBERR
 			return err
 		}
 		fmt.Printf("the account: %s Join bid success ...", address)
+	} else {
+		resp.Errno = utils.RECODE_DATAERR
+		return err
 	}
-	resp.Errno = utils.RECODE_DATAERR
+
 	return nil
 }
 
@@ -534,7 +537,7 @@ func EndBid(tokenID, weight int64, resp utils.Resp) error {
 		return err
 	}
 	// 获取token_id最高竞拍者的price
-	bidSQL := fmt.Sprintf("select b.price,b.address from auction a, bidwinner b where a.address <> b.address and b.token_id='%d' and a.status=1;", tokenID)
+	bidSQL := fmt.Sprintf("select b.price,b.address from auction a, bidwinner b where b.token_id='%d' and a.status=1;", tokenID)
 	value, num, err := dbs.DBQuery(bidSQL)
 	if err != nil || num <= 0 {
 		fmt.Println("failed to bidSQL...", err)
@@ -546,24 +549,17 @@ func EndBid(tokenID, weight int64, resp utils.Resp) error {
 	fmt.Println("aleady EndBid, Waiting SpiltAsset and transfer .....")
 	// 5. 操作以太坊: 资产分割, erc20转账
 	go func() {
-		// 提前判断后面情况的条件, 保证转账成功: 余额 > 参与拍卖的价格
-		balance, err := eths.GetPxcBalance(address)
-		if err != nil || balance < price {
-			resp.Errno = utils.RECODE_ERC20POORERR
-			fmt.Println("your pxa balance less")
-			return
-		}
 		err = eths.EthSplitAsset(configs.Config.Eth.Fundation, configs.Config.Eth.FundationPWD, address, tokenID, weight)
 		if err != nil {
 			resp.Errno = utils.RECODE_MINTERR
 			fmt.Println("failed to eths.EthSplitAsset ", err)
 			return
 		}
-		// _price, _ := strconv.ParseInt(price, 10, 32)
+
 		err = eths.EthErc20Transfer(address, configs.Config.Eth.FundationPWD, to, price)
 		if err != nil {
 			resp.Errno = utils.RECODE_ERC20ERR
-			fmt.Println("failed to eths.EEthErc20Transfer ", err)
+			fmt.Println("failed to eths.EthErc20Transfer ", err)
 			return
 		}
 		fmt.Println("---------------------------------------")
@@ -616,5 +612,56 @@ func Vote(c echo.Context) error {
 	}
 	// 5. 操作以太坊, 进行投票, 只能合约内将erc20 token转给tokenID的地址
 	eths.VoteTo(address, configs.Config.Eth.FundationPWD, tokenID)
+	return nil
+}
+
+// VotePlace ...
+func VotePlace(c echo.Context) error {
+	time.Sleep(time.Second)
+	// 1. 响应数据结构初始化
+	var resp utils.Resp
+	resp.Errno = utils.RECODE_OK
+	defer utils.ResponseData(c, &resp)
+
+	// 1.5 获取页数
+	pageIndex := 1
+
+	_pageIndex := c.QueryParam("pageIndex")
+	fmt.Println("pageIndex: ", _pageIndex)
+
+	pageIndexGet, _ := strconv.Atoi(_pageIndex)
+	if pageIndexGet != 0 {
+		pageIndex = pageIndexGet
+	}
+
+	// 2. 查看所有资产
+	totalCountSQL := fmt.Sprintf("select * from account_content a,content b where a.content_hash = b.content_hash;")
+	_, totalCount, err := dbs.DBQuery(totalCountSQL)
+	if err != nil || totalCount <= 0 {
+		resp.Errno = utils.RECODE_DBERR
+		return err
+	}
+
+	totalPage := math.Ceil(float64(totalCount) / float64(PageMaxPic))
+
+	// pageIndex := 1
+	startCount := PageMaxPic * (pageIndex - 1)
+	stopCount := PageMaxPic * pageIndex
+
+	// 3. 对资产进行分组
+	limitSQL := fmt.Sprintf("select token_id, title, a.content_hash from account_content a,content b where a.content_hash = b.content_hash limit %d, %d", startCount, stopCount)
+	fmt.Println(limitSQL)
+	values, num, err := dbs.DBQuery(limitSQL)
+	if err != nil || num <= 0 {
+		resp.Errno = utils.RECODE_DBERR
+		return err
+	}
+	mapResp := make(map[string]interface{})
+	mapResp["current_page"] = pageIndex
+	mapResp["total_page"] = totalPage
+	mapResp["total_count"] = totalCount
+	mapResp["data"] = values
+
+	resp.Data = mapResp
 	return nil
 }

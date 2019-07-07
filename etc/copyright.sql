@@ -76,9 +76,10 @@ create table vote
 alter table vote comment '投票表，一个账户一个图片，只能投一票，一票代表30pxc';
 CREATE UNIQUE INDEX vote_uindex ON copyright.vote (address,content_hash);
 
+delete from account;
+
 delete from vote;
 delete from aution;
 delete from account_content;
 delete from content;
-delete from account;
 delete from bidwinner;

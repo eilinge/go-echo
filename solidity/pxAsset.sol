@@ -160,7 +160,7 @@ contract pxAsset is ERC721 {
         _ownerTokenCount[msg.sender] = _ownerTokenCount[msg.sender].add(1);
         _tokenOwner[tokenId] = msg.sender;
         emit onNewAsset(_contentHash, msg.sender, tokenId);
-        pxcoin.transfer(msg.sender, 100);
+        pxcoin.transfer(msg.sender, 100); // from: address(pxa), to: msg.sender, value: 100
         _ownerToken[msg.sender].push(tokenId);
     }
     
@@ -181,7 +181,7 @@ contract pxAsset is ERC721 {
         require(address(0) != _buyer);
         Asset storage a = assets[_tokenId];
         require(a.weight >= _weight);
-        
+
         uint256 tokenId = assets.push(a) - 1;
         Asset storage newA = assets[tokenId];
         a.weight = a.weight.sub(_weight);
@@ -195,14 +195,9 @@ contract pxAsset is ERC721 {
     
     function vote(uint _tokenId) public {
         require(_tokenId < assets.length);
+        // require(_tokenOwner[_tokenId] != msg.sender, "this your token, can not vote");
         Asset storage a = assets[_tokenId];
         a.voteCount = a.voteCount.add(1);
-        pxcoin.transfer(fundation, 30);
-    }
-    
-    
-    function lengthAsset() public view returns(uint){
-        return assets.length;
     }
     
     function getPXCBalance(address _owner) view public returns(uint256) {

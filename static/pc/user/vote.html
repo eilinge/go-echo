@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <title>个人中心页面</title>
         <link rel="stylesheet" href="../assets/bootstrap/dist/css/bootstrap.css">
-        <link rel="stylesheet" href="../css/balancelist.css">
+        <link rel="stylesheet" href="../css/vote.css">
     </head>
     <body>
         <div class="layout">
@@ -43,10 +43,10 @@
                               <li>
                                   <a href="./balancelist.html">我的资产</a>
                               </li>
-                              <li class="active">
+                              <li>
                                   <a href="./auctionlist.html">拍卖中心</a>
                               </li>
-                              <li>
+                              <li class="active">
                                   <a href="./vote.html">投票区</a>
                               </li>
                           </ul>
@@ -60,28 +60,40 @@
               </nav>
             </div>
             <div class="container">
-                <ul class="containerlist"></ul>
+              <ul class="containerlist"></ul>
             </div>
+
         </div>
         <script src="../assets/jquery/jquery.js"></script>
         <script src="../assets/bootstrap/dist/js/bootstrap.js"></script>
         <script src="../assets/template-native/template-native.js"></script>
         <script type="text/template" id="templateId">
-            <% for(var i=0;i<data.data.length;i++){ %>
-            <li>
-                <div>
-                    <!-- 获取response data, 添加分页 -->
-                    <img data-tokenid="<%= data.data[i].token_id %>" src="/content/<%=data.data[i].title%>"
-                        data-pixhash="<%= data.data[i].content_hash %>">
-                    <div>
-                        <span><%= data.data[i].title %></span>
-                        <b>份额</b><span><%= data.data[i].percent %></span>
-                        <input type="text" placeholder="<%= data.data[i].price %>"><a href="javascript:;" class='bid_btn'
-                            data-tokenid="<%= data.data[i].token_id %>">竞拍</a>
-                    </div>
-                </div>
-            </li>
-            <% } %>
+              <% for(var i=0;i<data.data.length;i++){ %>
+              <li>
+                  <div>
+                      <!-- 获取response data, 添加分页 -->
+                      <img data-tokenid="<%= data.data[i].token_id %>" src="/content/<%=data.data[i].title%>"
+                          data-pixhash="<%= data.data[i].content_hash %>">
+                  </div>
+              </li>
+              <% } %>
+            <div>
+                <ul class="pagination">
+                  <li><a href="/vote?pageIndex=1">首页</a></li>
+                  <li>
+                    <a href="#" aria-label="Previous">
+                      <span aria-hidden="true">&laquo;</span>
+                    </a>
+                  </li>
+                  <li>
+                      <a href="#" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                      </a>
+                  </li>
+                  <li><a href="/vote?pageIndex=<%= data.total_page %>">尾页</a></li>
+                  <li>共<%= data.total_count %>条记录/共<%= data.total_page %>页/当前<%= data.current_page %>页</li>
+                </ul>
+            </div>
         </script>
         <script>
             $(function () {
@@ -96,6 +108,7 @@
                             url: "/session",
                             type: "get",
                             success: function (data) {
+                                console.log(data)
                                 if (data.errno != 0) {
                                     window.location.href = "../";
                                 } else {
@@ -106,7 +119,8 @@
                     },
                     queryBalance: function () {
                         $.ajax({
-                            url: "/auctions",
+                            // url: "/vote?pageIndex=2", // 将页面与路由进行绑定
+                            url: "/vote", // 将页面与路由进行绑定
                             type: "get",
                             success: function (data) {
                                 console.log(data)
@@ -117,19 +131,25 @@
                         }
                     };
                     pdj.init();
-                $(".containerlist").on("click", ".bid_btn", function () {
+                $(".containerlist").on("click", "img", function () {
                     var tokenID = this.dataset['tokenid'];
-                    var price = $(this).prev().val();
+                    var pixhash = this.dataset["pixhash"]
+                    //当前投票的数量。 var  voteCount=$(this).next().find("span").text();
+                    var obj = {
+                        token_id: tokenID,
+                        voteCount: 1,
+                        contentHash: pixhash,
+                    };
+                    // var strparams = JSON.stringify(obj);
+                    // console.log(strparams)
                     $.ajax({
-                        url: "/auction/bid",
                         type: "get",
-                        data: {
-                            tokenid: tokenID,
-                            price: price
-                        },
+                        url: "/content/vote",
+                        contentType: "application/json",
+                        data: obj,
                         success: function (data) {
                             if (data.errno == 0) {
-                                alert("竞拍成功");
+                                alert("投票成功");
                             } else {
                                 alert(data.errmsg)
                             }

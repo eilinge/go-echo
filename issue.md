@@ -1,12 +1,10 @@
-# Issue
+@[TOC](TCP/IP如何确保网络通讯质量)
 
-## net start mysql(服务名无效)
-
-    https://www.jb51.net/article/51428.htm
+# 操作步骤
 
 ## geth
 
-    geth --datadir ./data --networkid 15 --port 30303 --rpc --rpcaddr 0.0.0.0 --rpcport 8545 --rpcvhosts "*" --rpcapi "db,net,eth,web3,personal" --rpccorsdomain "*" --ws --wsaddr "localhost" --wsport "8546" --wsorigins "*" --nat "any" --nodiscover --dev --dev.period 1 console 2> 1.log
+    - geth --datadir ./data --networkid 15 --port 30303 --rpc --rpcaddr 0.0.0.0 --rpcport 8545 --rpcvhosts "*" --rpcapi "db,net,eth,web3,personal" --rpccorsdomain "*" --ws --wsaddr "localhost" --wsport "8546" --wsorigins "*" --nat "any" --nodiscover --dev --dev.period 1 console 2> 1.log
 
 ## mysqld server
 
@@ -14,11 +12,18 @@
 
 ## mysql client
 
-    mysql -u root -p
+    - mysql -u root -p
+    - 需要重新构建mysql数据库表
 
 ## run go
 
     go run main.go -c etc/copyright.dev.toml
+
+# 其他
+
+## net start mysql(服务名无效)
+
+    https://www.jb51.net/article/51428.htm
 
 ## bytes32
 
@@ -50,4 +55,27 @@
 ### 运行时遇到的问题
 
     1. 点击竞拍之后, 服务器未响应(提交的数据不对/服务器响应返回未被正确接收)
+        将go eths.Auction 替换成 eths.Auction, 否则无法执行(if err!= nil{})
     2. 分割资产后, 需要对新, 旧资产进行更新, 存储content
+        分割资产时, 添加emit newAsset()事件, 订阅到事件之后, 自动存储
+
+### 待解决的问题
+
+    1. 竞拍时, 资产拥有者无法进行拍卖
+    2. 竞拍结束后, 假使未有人出到高于售价时的金额, 竞拍时间结束之后, 该资产应从竞拍列表中移除
+    3. 查看所有资产的分页功能未完善(该项目还未完成请求vote?pageIndex=1的路由功能)
+    4. echo 的模板 tempalte, 未找到更多的相关文档, 导致将网页与域名无法直接绑定
+    ....
+
+### 项目作业
+
+    链下竞拍:
+        新建bidwinner表, 将最高竞拍的资料进行存储, 竞拍结束时, 从bidwinner中, 提取出对应token, 完成资产分割和转账(自动:3minute)
+
+    链下排行榜奖励:
+        以第一次投票开始计时, 每10秒, 进行一次排行榜刷新
+        10 * 10秒之后, 进行奖励
+
+    erc20的获得和扣除:
+        用户注册时, 会获得20(基金会)
+        用户投票时, 会扣除30(基金会)
